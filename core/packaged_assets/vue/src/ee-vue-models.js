@@ -1,3 +1,10 @@
+var Vue = require('vue');
+var Vuex = require('vuex');
+var VueResource = require('vue-resource');
+
+Vue.use(VueResource);
+
+
 //let's add some custom methods that we'll use for our storage.
 Vuex.Store.prototype.hasEntityInCollection = function( collection, entity ) {
     //if there isn't even any collection matching what's requested then get out
@@ -54,6 +61,8 @@ Vuex.Store.prototype.replaceEntityInCollection = function( collection, entity ) 
     }
 };/**/
 
+Vue.use(Vuex);
+
 (function( window, undefined ) {
     'use strict';
 
@@ -66,6 +75,11 @@ Vuex.Store.prototype.replaceEntityInCollection = function( collection, entity ) 
     eejs.api.mixins = eejs.api.mixins || {};
     eejs.api.components = eejs.api.components || {};
     eejs.api.modules = eejs.api.modules || {};
+
+
+    //hold the vue and vuex and vue-resource objects for usage everywhere because Vue, Vuex, and Vue-resource will not be available
+    eejs.vue = eejs.vue || Vue;
+    eejs.vuex = eejs.vuex || Vuex;
 
     /**
     //special factory that reads the ee rest-api discovery endpoint and uses the schema to setup the object for the Store.
@@ -367,9 +381,13 @@ Vuex.Store.prototype.replaceEntityInCollection = function( collection, entity ) 
             //if collection is provided, then that gets used to initialize the collection from the store.
             //Otherwise it is expected to be assumed from props in a parent component.
             if ( this.$options.collection !== '' ) {
-                this.collectionName = this.$options.collection;
                 //fetch collection set in store
                 this.fetch(true);
+            }
+        },
+        computed: {
+            collectionName : function() {
+                return this.$options.collection !== '' ? this.$options.collection : this.collectionName;
             }
         },
         methods: {
@@ -393,14 +411,18 @@ Vuex.Store.prototype.replaceEntityInCollection = function( collection, entity ) 
         modelId: 0,
         collection: '',
         store: eejs.api.collections,
-        props: ['id','collectionName'],
+        props: ['id','collection'],
         created : function(){
-            this.collectionName = this.$options.collection !== '' ? this.$options.collection : this.collectionName;
             /*if the primary key property is set then override modelId (but only if that isn't set).*/
             /*if the modelId is not empty then let's do a get.*/
             if ( this.$options.modelId > 0 ) {
                 this.id = this.$options.modelId;
                 this.add();
+            }
+        },
+        computed: {
+            collectionName: function() {
+                return this.$options.collection !== '' ? this.$options.collection : this.collection;
             }
         },
         methods: {
@@ -449,7 +471,7 @@ Vuex.Store.prototype.replaceEntityInCollection = function( collection, entity ) 
     eejs.api.mixins.EventDatetimes = {
         data: function(){
             return{
-                EVT_ID: this.event.EVT_ID,
+                EVT_ID: this.initialEvent.EVT_ID,
                 datetimes:[],
                 hasDatetimes: false
             }
@@ -478,7 +500,7 @@ Vuex.Store.prototype.replaceEntityInCollection = function( collection, entity ) 
                 });
             }
         }
-    }
+    };
 
     /** Components **/
     eejs.api.components.EventCollection = {
@@ -494,10 +516,10 @@ Vuex.Store.prototype.replaceEntityInCollection = function( collection, entity ) 
 
     eejs.api.components.Datetime = {
         collection: 'datetimes',
-        props: ['datetime'],
+        props: ['initialDatetime'],
         data: function() {
             return {
-                datetime: this.datetime,
+                datetime: this.initialDatetime,
                 hasDatetime: false
             }
         },
@@ -521,10 +543,10 @@ Vuex.Store.prototype.replaceEntityInCollection = function( collection, entity ) 
 
     eejs.api.components.Event = {
         collection: 'events',
-        props: ['event'],
+        props: ['initialEvent'],
         data: function() {
             return {
-                event: this.event,
+                event: this.initialEvent,
                 hasEvent:false
             }
         },
