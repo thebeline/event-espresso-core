@@ -3,8 +3,12 @@
   "version": "1.0.0",
   "description": "Models component for implementation with vue.",
   "main": "src/ee-vue-models.js",
+  "watch": {
+    "{src,test}/*.js": ["dev"]
+  },
   "scripts": {
     "dev": "cp src/ee-vue-models.js  dist/ee-vue-models.build.js",
+    "watch": "npm-scripts-watcher",
     "build": "cross-env NODE_ENV=production src/ee-vue-models.js | uglifyjs -c warnings=false -m > dist/ee-vue-models.build.js"
   },
   "author": "Darren Ethier",
