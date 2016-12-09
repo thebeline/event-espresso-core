@@ -89,7 +89,7 @@ class Experiments_Admin_Page extends EE_Admin_Page
 
 
     public function load_scripts_styles_default() {
-        wp_register_script(
+        /*wp_register_script(
             'vue',
             'https://unpkg.com/vue/dist/vue.min.js',
             array( 'underscore' ),
@@ -109,11 +109,11 @@ class Experiments_Admin_Page extends EE_Admin_Page
             array('vue'),
             null,
             true
-        );
+        );/**/
         wp_register_script(
             'eeapi',
             EE_PLUGIN_DIR_URL . 'core/packaged_assets/vue/dist/ee-vue-models.build.js',
-            array( 'vue','vuex','vue-resource' ),
+            array( 'underscore' ),
             espresso_version(),
             true
         );
