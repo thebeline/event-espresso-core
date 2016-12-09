@@ -156,7 +156,7 @@ Vuex.Store.prototype.replaceEntityInCollection = function( collection, entity ) 
         modules: {
             events : eejs.api.modules.eventCollection,
             tickets : eejs.api.modules.ticketCollection,
-            datetime : eejs.api.modules.datetimeCollection
+            datetimes : eejs.api.modules.datetimeCollection
         },
         getters: {
             // getters are more like reducers in vuex. In vuex getters to not allow custom arguments so its not a usable
@@ -250,7 +250,7 @@ Vuex.Store.prototype.replaceEntityInCollection = function( collection, entity ) 
              */
             fetchCollection: function( context, payload ) {
                 return new Promise( function(resolve, reject) {
-                    if ( typeof(payload.collection) === 'undefined' ) {
+                    if ( typeof(payload.collection) === 'undefined' || payload.collection === '' ) {
                         reject( 'In order to get a collection, you need to specify the collection to retrieve' +
                             ' via payload.collection.');
                     }
@@ -441,6 +441,45 @@ Vuex.Store.prototype.replaceEntityInCollection = function( collection, entity ) 
         }
     };
 
+
+    /**
+     * An example mixin that might be what we'd do for relations.
+     * @type {{data: eejs.api.mixin.Datetimes.data, mounted: eejs.api.mixin.Datetimes.mounted, methods: {getRelatedDatetimes: eejs.api.mixin.Datetimes.methods.getRelatedDatetimes}}}
+     */
+    eejs.api.mixins.EventDatetimes = {
+        data: function(){
+            return{
+                EVT_ID: this.event.EVT_ID,
+                datetimes:[],
+                hasDatetimes: false
+            }
+        },
+        store: eejs.api.collections,
+        mounted: function() {
+            if ( this.datetimes.length === 0 && this.EVT_ID > 0 ) {
+                var self = this;
+                this.getRelatedDatetimes();
+            }
+        },
+        methods: {
+            getRelatedDatetimes: function() {
+                var self = this;
+                this.$store.dispatch(
+                    'fetchCollection',
+                    {
+                        collection:'datetimes',
+                        queryString: 'where[Event.EVT_ID]='+self.EVT_ID
+                    }
+                ).then( function(response){
+                    self.hasDatetimes = true;
+                    self.datetimes = response
+                }).catch( function(response){
+                    console.log(response);
+                });
+            }
+        }
+    }
+
     /** Components **/
     eejs.api.components.EventCollection = {
        collection: 'events',
@@ -453,10 +492,33 @@ Vuex.Store.prototype.replaceEntityInCollection = function( collection, entity ) 
        mixins: [eejs.api.mixins.collection]
     };
 
+    eejs.api.components.Datetime = {
+        collection: 'datetimes',
+        props: ['datetime'],
+        data: function() {
+            return {
+                datetime: this.datetime,
+                hasDatetime: false
+            }
+        },
+        mounted: function() {
+            //if the event property is empty, and we have an id, then lets attempt to get the event set.
+            if ( this.isEmpty() && this.id > 0 ) {
+                var self = this;
+                this.$store.dispatch('addEntitybyId', {collection:this.collectionName,id:this.id})
+                    .then( function(response){
+                        self.datetime = response;
+                        self.hasDatetime = true;
+                    })
+                    .catch( function(response){
+                        console.log(response);
+                    });
+            }
+        },
+        mixins: [eejs.api.mixins.model]
+    };
 
-    /**
-     * Collections and Models
-     */
+
     eejs.api.components.Event = {
         collection: 'events',
         props: ['event'],
@@ -473,12 +535,16 @@ Vuex.Store.prototype.replaceEntityInCollection = function( collection, entity ) 
                 this.$store.dispatch('addEntitybyId', {collection:this.collectionName,id:this.id})
                     .then( function(response){
                         self.event = response;
+                        self.hasEvent = true;
                     })
                     .catch( function(response){
                         console.log(response);
                     });
             }
         },
-        mixins: [eejs.api.mixins.model]
+        components: {
+          'datetime': eejs.api.components.Datetime
+        },
+        mixins: [eejs.api.mixins.model,eejs.api.mixins.EventDatetimes]
     };
 })(window);
