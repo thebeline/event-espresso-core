@@ -2,6 +2,6 @@
     <h2>{{event.EVT_name}}</h2>
     <p v-html="event.EVT_desc.rendered"></p>
     <ul class="datetimes">
-        <li is="datetime" v-for="datetime in datetimes" v-bind:datetime="datetime"></li>
+        <li is="datetime" v-for="datetime in datetimes" v-bind:initial-datetime="datetime"></li>
     </ul>
 </div>
