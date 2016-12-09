@@ -89,28 +89,69 @@ class Experiments_Admin_Page extends EE_Admin_Page
 
 
     public function load_scripts_styles_default() {
-        /**wp_register_script(
+        wp_register_script(
             'vue',
-            'https://unpkg.com/vue/dist/vue.js',
+            'https://unpkg.com/vue/dist/vue.min.js',
             array( 'underscore' ),
             null,
             true
         );
-        /**wp_enqueue_script('vue');**/
         wp_register_script(
-            'eevue',
+            'vuex',
+            'https://unpkg.com/vuex/dist/vuex.min.js',
+            array('vue'),
+            null,
+            true
+        );
+        wp_register_script(
+            'vue-resource',
+            'https://unpkg.com/vue-resource/dist/vue-resource.min.js',
+            array('vue'),
+            null,
+            true
+        );
+        wp_register_script(
+            'eeapi',
             EE_PLUGIN_DIR_URL . 'core/packaged_assets/vue/dist/ee-vue-models.build.js',
-            array( 'underscore' ),
+            array( 'vue','vuex','vue-resource' ),
             espresso_version(),
             true
         );
-        wp_enqueue_script('eevue');
+        wp_register_script(
+            'eventexperiment',
+            EE_EXPERIMENTS_ASSETS_URL . 'eventsexperiment.js',
+            array('eeapi'),
+            espresso_version(),
+            true
+        );
+        wp_enqueue_script('eventexperiment');
+
+        wp_localize_script(
+            'eeapi',
+            'eejs',
+            array(
+                'paths' => array(
+                    'rest_route' => rest_url('ee/v4.8.36/')
+                ),
+                'templates' => array(
+                    'event' => EEH_Template::display_template(
+                        EE_EXPERIMENTS_ADMIN_TEMPLATE_PATH . 'event_template.html',
+                        '',
+                        true
+                    )
+                )
+            )
+        );
     }
 
 
     protected function _view_experimentation()
     {
-        $this->_template_args['admin_page_content'] = 'Hello, this is an experiment.';
+        $this->_template_args['admin_page_content'] = EEH_Template::display_template(
+            EE_EXPERIMENTS_ADMIN_TEMPLATE_PATH . 'app_container.html',
+            '',
+            true
+        );
         $this->display_admin_page_with_no_sidebar();
     }
 } //end Experiments_Admin_Page class
