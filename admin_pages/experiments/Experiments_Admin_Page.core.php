@@ -99,7 +99,7 @@ class Experiments_Admin_Page extends EE_Admin_Page
         wp_enqueue_script('eventexperiment');
 
         wp_localize_script(
-            'eeapi',
+            'eejs-api',
             'eejs',
             array(
                 'templates' => array(
