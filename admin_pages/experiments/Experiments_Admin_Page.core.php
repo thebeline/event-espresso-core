@@ -98,22 +98,16 @@ class Experiments_Admin_Page extends EE_Admin_Page
         );
         wp_enqueue_script('eventexperiment');
 
-        wp_localize_script(
-            'eejs-api',
-            'eejs',
-            array(
-                'templates' => array(
-                    'event' => EEH_Template::display_template(
-                        EE_EXPERIMENTS_ADMIN_TEMPLATE_PATH . 'event_template.html',
-                        '',
-                        true
-                    ),
-                    'datetime' => EEH_Template::display_template(
-                        EE_EXPERIMENTS_ADMIN_TEMPLATE_PATH . 'datetime_template.html',
-                        '',
-                        true
-                    )
-                )
+        EE_Registry::$eejs['templates'] = array(
+            'event' => EEH_Template::display_template(
+                EE_EXPERIMENTS_ADMIN_TEMPLATE_PATH . 'event_template.html',
+                '',
+                true
+            ),
+            'datetime' => EEH_Template::display_template(
+                EE_EXPERIMENTS_ADMIN_TEMPLATE_PATH . 'datetime_template.html',
+                '',
+                true
             )
         );
     }
