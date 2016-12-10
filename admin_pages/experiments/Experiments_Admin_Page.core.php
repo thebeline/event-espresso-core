@@ -112,7 +112,7 @@ class Experiments_Admin_Page extends EE_Admin_Page
         );/**/
         wp_register_script(
             'eeapi',
-            EE_PLUGIN_DIR_URL . 'core/packaged_assets/vue/dist/ee-vue-models.build.js',
+            EE_PLUGIN_DIR_URL . 'core/packaged_assets/vue/dist/ee-js.min.js',
             array( 'underscore' ),
             espresso_version(),
             true

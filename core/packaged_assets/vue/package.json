@@ -9,9 +9,9 @@
     ]
   },
   "scripts": {
-    "dev": "watchify src/ee-vue-models.js -o dist/ee-vue-models.build.js -vd --poll=100 -t aliasify",
+    "dev": "watchify src/eejs-api.js -o dist/eejs-api.min.js -vd --poll=100 -t aliasify",
     "watch": "npm-scripts-watcher",
-    "build": "cross-env NODE_ENV=production browserify -t aliasify src/ee-vue-models.js | uglifyjs -c warnings=false -m > dist/ee-vue-models.build.js",
+    "build": "cross-env NODE_ENV=production browserify -t aliasify src/eejs-api.js | uglifyjs -c warnings=false -m > dist/eejs-api.min.js",
     "alias": "aliasify --help"
   },
   "author": "Darren Ethier",
