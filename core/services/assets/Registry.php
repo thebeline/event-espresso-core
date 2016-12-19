@@ -43,7 +43,7 @@ class Registry
     {
         wp_register_script(
             'eejs-core',
-            EE_PLUGIN_DIR_URL . 'core/services/core/assets/eejs-core.js',
+            EE_PLUGIN_DIR_URL . 'core/services/assets/core_assets/eejs-core.js',
             array(),
             espresso_version(),
             true
@@ -57,7 +57,7 @@ class Registry
             espresso_version(),
             true
         );
-        $this->jsdata['paths'] = array('rest_route' => rest_url('ee/v4.8.36'));
+        $this->jsdata['paths'] = array('rest_route' => rest_url('ee/v4.8.36/'));
 
         wp_localize_script('eejs-core', 'eejs', array('data'=>$this->jsdata));
     }
