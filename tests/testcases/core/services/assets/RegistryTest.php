@@ -1,5 +1,11 @@
 <?php
 
+use EventEspresso\core\domain\DomainFactory;
+use EventEspresso\core\domain\values\FilePath;
+use EventEspresso\core\domain\values\FullyQualifiedName;
+use EventEspresso\core\domain\values\Version;
+use EventEspresso\core\services\assets\AssetCollection;
+use EventEspresso\core\services\assets\I18nRegistry;
 use EventEspresso\core\services\assets\Registry;
 
 /**
@@ -19,11 +25,31 @@ class RegistryTest extends EE_UnitTestCase
      */
     protected $registry;
 
+
+    /**
+     * @throws DomainException
+     * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws \EventEspresso\core\exceptions\InvalidClassException
+     * @throws \EventEspresso\core\exceptions\InvalidDataTypeException
+     * @throws \EventEspresso\core\exceptions\InvalidFilePathException
+     * @throws \EventEspresso\core\exceptions\InvalidInterfaceException
+     */
     public function setUp()
     {
+        add_filter('FHEE__EventEspresso_core_services_assets_Registry__debug', '__return_true');
+        $domain = DomainFactory::getShared(
+            new FullyQualifiedName(
+                'EventEspresso\core\domain\Domain'
+            ),
+            array(
+                new FilePath(EVENT_ESPRESSO_MAIN_FILE),
+                Version::fromString(espresso_version())
+            )
+        );
         $this->registry = new Registry(
-            EE_Config::instance()->template_settings,
-            EE_Config::instance()->currency
+            new AssetCollection(),
+            new i18nRegistry(array(), $domain)
         );
         parent::setUp();
     }
@@ -36,6 +62,9 @@ class RegistryTest extends EE_UnitTestCase
     }
 
 
+    /**
+     * @throws InvalidArgumentException
+     */
     public function test_addData_no_previous_scalar()
     {
         $this->registry->addData('test', 'has_data');
@@ -44,6 +73,9 @@ class RegistryTest extends EE_UnitTestCase
     }
 
 
+    /**
+     * @throws InvalidArgumentException
+     */
     public function test_addData_no_previous_array()
     {
         $this->registry->addData('test', array('has_data'));
@@ -82,8 +114,67 @@ class RegistryTest extends EE_UnitTestCase
     }
 
 
+    public function pushDataWithArrayProvider()
+    {
+        return [
+            'initial creation of dataset when it does not exist' => ['test', 'foo', ['foo']],
+            'adding a string to existing dataset'                => ['test', 'bar', ['foo', 'bar']],
+            'adding an array to existing dataset'                => [
+                'test',
+                ['howdy', 'there'],
+                ['foo', 'bar', 'howdy', 'there'],
+            ],
+        ];
+    }
+
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    public function testPushDataWithArrayAddingData()
+    {
+        foreach ($this->pushDataWithArrayProvider() as $test_description => $test_data) {
+            list($key, $value, $expected) = $test_data;
+            $this->registry->pushData($key, $value);
+            $this->assertEquals($expected, $this->registry->getData($key), $test_description);
+        }
+    }
+
+
+    /**
+     * @expectedException InvalidArgumentException
+     */
+    public function testPushDataExceptionWhenExistingDataIsScalar()
+    {
+        $this->registry->addData( 'test', 'foo' );
+        $this->registry->pushData( 'test', 'bar' );
+    }
+
+
+    public function pushDataWithAssociativeArrayProvider()
+    {
+        return [
+            'initial creation of dataset'           => ['test', ['a' => 'foo'], ['a' => 'foo']],
+            'adding new item with different key'    => ['test', ['b' => 'bar'], ['a' => 'foo', 'b' => 'bar']],
+            'adding new item with pre-existing key' => ['test', ['a' => 'bar'], ['a' => 'bar', 'b' => 'bar']],
+            'adding scalar array'                   => ['test', 'hello', ['a' => 'bar', 'b' => 'bar', 'hello']],
+        ];
+    }
+
+    
+    public function testPushDataWithAssociativeArray()
+    {
+        foreach ($this->pushDataWithAssociativeArrayProvider() as $test_description => $test_data) {
+            list($key, $value, $expected) = $test_data;
+            $this->registry->pushData($key, $value);
+            $this->assertEquals($expected, $this->registry->getData($key), $test_description);
+        }
+    }
+
+
     /**
      * @group 10304
+     * @throws InvalidArgumentException
      */
     public function test_getTemplate()
     {
@@ -91,3 +182,4 @@ class RegistryTest extends EE_UnitTestCase
         $this->assertEquals('some test content', $this->registry->getTemplate('test'));
     }
 }
+// location: tests/testcases/core/services/assets/RegistryTest.php

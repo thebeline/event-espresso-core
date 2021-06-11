@@ -1,11 +1,8 @@
 <?php
 
 use EventEspresso\core\interfaces\ResettableInterface;
+use EventEspresso\core\services\loaders\LoaderFactory;
 use EventEspresso\core\services\shortcodes\LegacyShortcodesManager;
-
-defined('EVENT_ESPRESSO_VERSION') || exit('No direct script access allowed');
-
-
 
 /**
  * EE_Config
@@ -17,14 +14,13 @@ defined('EVENT_ESPRESSO_VERSION') || exit('No direct script access allowed');
 final class EE_Config implements ResettableInterface
 {
 
-    const OPTION_NAME        = 'ee_config';
+    const OPTION_NAME = 'ee_config';
 
-    const LOG_NAME           = 'ee_config_log';
+    const LOG_NAME = 'ee_config_log';
 
-    const LOG_LENGTH         = 100;
+    const LOG_LENGTH = 100;
 
     const ADDON_OPTION_NAMES = 'ee_config_option_names';
-
 
     /**
      *    instance of the EE_Config object
@@ -103,7 +99,6 @@ final class EE_Config implements ResettableInterface
      */
     public $tax_settings;
 
-
     /**
      * Settings pertaining to global messages settings.
      *
@@ -142,7 +137,6 @@ final class EE_Config implements ResettableInterface
     private static $_module_view_map = array();
 
 
-
     /**
      * @singleton method used to instantiate class object
      * @access    public
@@ -156,7 +150,6 @@ final class EE_Config implements ResettableInterface
         }
         return self::$_instance;
     }
-
 
 
     /**
@@ -183,16 +176,15 @@ final class EE_Config implements ResettableInterface
             self::$_instance->update_addon_option_names();
         }
         self::$_instance = null;
-        //we don't need to reset the static properties imo because those should
-        //only change when a module is added or removed. Currently we don't
-        //support removing a module during a request when it previously existed
+        // we don't need to reset the static properties imo because those should
+        // only change when a module is added or removed. Currently we don't
+        // support removing a module during a request when it previously existed
         if ($reinstantiate) {
             return self::instance();
         } else {
             return null;
         }
     }
-
 
 
     /**
@@ -229,7 +221,6 @@ final class EE_Config implements ResettableInterface
     }
 
 
-
     /**
      * @return boolean
      */
@@ -237,7 +228,6 @@ final class EE_Config implements ResettableInterface
     {
         return self::$_logging_enabled;
     }
-
 
 
     /**
@@ -252,7 +242,6 @@ final class EE_Config implements ResettableInterface
     }
 
 
-
     /**
      *        _initialize_config
      *
@@ -262,7 +251,7 @@ final class EE_Config implements ResettableInterface
     private function _initialize_config()
     {
         EE_Config::trim_log();
-        //set defaults
+        // set defaults
         $this->_addon_option_names = get_option(EE_Config::ADDON_OPTION_NAMES, array());
         $this->addons = new stdClass();
         // set _module_route_map
@@ -272,7 +261,6 @@ final class EE_Config implements ResettableInterface
         // set _module_view_map
         EE_Config::$_module_view_map = array();
     }
-
 
 
     /**
@@ -296,7 +284,7 @@ final class EE_Config implements ResettableInterface
             );
             if (is_object($settings) && property_exists($this, $config)) {
                 $this->{$config} = apply_filters('FHEE__EE_Config___load_core_config__' . $config, $settings);
-                //call configs populate method to ensure any defaults are set for empty values.
+                // call configs populate method to ensure any defaults are set for empty values.
                 if (method_exists($settings, 'populate')) {
                     $this->{$config}->populate();
                 }
@@ -311,7 +299,6 @@ final class EE_Config implements ResettableInterface
         // load_core_config__end hook
         do_action('AHEE__EE_Config___load_core_config__end', $this);
     }
-
 
 
     /**
@@ -358,18 +345,24 @@ final class EE_Config implements ResettableInterface
         $this->map_settings = $this->map_settings instanceof EE_Map_Config
             ? $this->map_settings
             : new EE_Map_Config();
-        $this->map_settings = apply_filters('FHEE__EE_Config___initialize_config__map_settings',
-            $this->map_settings);
+        $this->map_settings = apply_filters(
+            'FHEE__EE_Config___initialize_config__map_settings',
+            $this->map_settings
+        );
         $this->environment = $this->environment instanceof EE_Environment_Config
             ? $this->environment
             : new EE_Environment_Config();
-        $this->environment = apply_filters('FHEE__EE_Config___initialize_config__environment',
-            $this->environment);
+        $this->environment = apply_filters(
+            'FHEE__EE_Config___initialize_config__environment',
+            $this->environment
+        );
         $this->tax_settings = $this->tax_settings instanceof EE_Tax_Config
             ? $this->tax_settings
             : new EE_Tax_Config();
-        $this->tax_settings = apply_filters('FHEE__EE_Config___initialize_config__tax_settings',
-            $this->tax_settings);
+        $this->tax_settings = apply_filters(
+            'FHEE__EE_Config___initialize_config__tax_settings',
+            $this->tax_settings
+        );
         $this->messages = apply_filters('FHEE__EE_Config__initialize_config__messages', $this->messages);
         $this->messages = $this->messages instanceof EE_Messages_Config
             ? $this->messages
@@ -396,7 +389,6 @@ final class EE_Config implements ResettableInterface
             get_option(EE_Config::OPTION_NAME, array())
         );
     }
-
 
 
     /**
@@ -434,7 +426,6 @@ final class EE_Config implements ResettableInterface
     }
 
 
-
     /**
      *    update_espresso_config
      *
@@ -445,14 +436,12 @@ final class EE_Config implements ResettableInterface
         $this->_addon_option_names = array();
         foreach ($this->addons as $addon_name => $addon_config_obj) {
             $addon_config_obj = maybe_unserialize($addon_config_obj);
-            $config_class = get_class($addon_config_obj);
-            if ($addon_config_obj instanceof $config_class && ! $addon_config_obj instanceof __PHP_Incomplete_Class) {
+            if ($addon_config_obj instanceof EE_Config_Base) {
                 $this->update_config('addons', $addon_name, $addon_config_obj, false);
             }
             $this->addons->{$addon_name} = null;
         }
     }
-
 
 
     /**
@@ -470,8 +459,8 @@ final class EE_Config implements ResettableInterface
             return false;
         }
         // commented out the following re: https://events.codebasehq.com/projects/event-espresso/tickets/8197
-        //$clone = clone( self::$_instance );
-        //self::$_instance = NULL;
+        // $clone = clone( self::$_instance );
+        // self::$_instance = NULL;
         do_action('AHEE__EE_Config__update_espresso_config__begin', $this);
         $this->_reset_espresso_addon_config();
         // hook into update_option because that happens AFTER the ( $value === $old_value ) conditional
@@ -486,10 +475,10 @@ final class EE_Config implements ResettableInterface
         EE_Config::log(EE_Config::OPTION_NAME);
         // if not saved... check if the hook we just added still exists;
         // if it does, it means one of two things:
-        // 		that update_option bailed at the ( $value === $old_value ) conditional,
-        //		 or...
-        // 		the db update query returned 0 rows affected
-        // 		(probably because the data  value was the same from it's perspective)
+        // that update_option bailed at the($value === $old_value) conditional,
+        // or...
+        // the db update query returned 0 rows affected
+        // (probably because the data  value was the same from it's perspective)
         // so the existence of the hook means that a negative result from update_option is NOT an error,
         // but just means no update occurred, so don't display an error to the user.
         // BUT... if update_option returns FALSE, AND the hook is missing,
@@ -498,8 +487,8 @@ final class EE_Config implements ResettableInterface
         // remove our action since we don't want it in the system anymore
         remove_action('update_option', array($this, 'double_check_config_comparison'), 1);
         do_action('AHEE__EE_Config__update_espresso_config__end', $this, $saved);
-        //self::$_instance = $clone;
-        //unset( $clone );
+        // self::$_instance = $clone;
+        // unset( $clone );
         // if config remains the same or was updated successfully
         if ($saved) {
             if ($add_success) {
@@ -523,7 +512,6 @@ final class EE_Config implements ResettableInterface
             return false;
         }
     }
-
 
 
     /**
@@ -550,7 +538,7 @@ final class EE_Config implements ResettableInterface
             foreach ($tests_to_run as $test) {
                 switch ($test) {
                     // TEST #1 : check that section was set
-                    case 1 :
+                    case 1:
                         if (empty($section)) {
                             if ($display_errors) {
                                 throw new EE_Error(
@@ -567,7 +555,7 @@ final class EE_Config implements ResettableInterface
                         }
                         break;
                     // TEST #2 : check that settings section exists
-                    case 2 :
+                    case 2:
                         if (! isset($this->{$section})) {
                             if ($display_errors) {
                                 throw new EE_Error(
@@ -581,9 +569,8 @@ final class EE_Config implements ResettableInterface
                         }
                         break;
                     // TEST #3 : check that section is the proper format
-                    case 3 :
-                        if (
-                        ! ($this->{$section} instanceof EE_Config_Base || $this->{$section} instanceof stdClass)
+                    case 3:
+                        if (! ($this->{$section} instanceof EE_Config_Base || $this->{$section} instanceof stdClass)
                         ) {
                             if ($display_errors) {
                                 throw new EE_Error(
@@ -600,7 +587,7 @@ final class EE_Config implements ResettableInterface
                         }
                         break;
                     // TEST #4 : check that config section name has been set
-                    case 4 :
+                    case 4:
                         if (empty($name)) {
                             if ($display_errors) {
                                 throw new EE_Error(
@@ -614,7 +601,7 @@ final class EE_Config implements ResettableInterface
                         }
                         break;
                     // TEST #5 : check that a config class name has been set
-                    case 5 :
+                    case 5:
                         if (empty($config_class)) {
                             if ($display_errors) {
                                 throw new EE_Error(
@@ -628,7 +615,7 @@ final class EE_Config implements ResettableInterface
                         }
                         break;
                     // TEST #6 : verify config class is accessible
-                    case 6 :
+                    case 6:
                         if (! class_exists($config_class)) {
                             if ($display_errors) {
                                 throw new EE_Error(
@@ -645,7 +632,7 @@ final class EE_Config implements ResettableInterface
                         }
                         break;
                     // TEST #7 : check that config has even been set
-                    case 7 :
+                    case 7:
                         if (! isset($this->{$section}->{$name})) {
                             if ($display_errors) {
                                 throw new EE_Error(
@@ -663,7 +650,7 @@ final class EE_Config implements ResettableInterface
                         }
                         break;
                     // TEST #8 : check that config is the requested type
-                    case 8 :
+                    case 8:
                         if (! $this->{$section}->{$name} instanceof $config_class) {
                             if ($display_errors) {
                                 throw new EE_Error(
@@ -682,7 +669,7 @@ final class EE_Config implements ResettableInterface
                         }
                         break;
                     // TEST #9 : verify config object
-                    case 9 :
+                    case 9:
                         if (! $config_obj instanceof EE_Config_Base) {
                             if ($display_errors) {
                                 throw new EE_Error(
@@ -705,7 +692,6 @@ final class EE_Config implements ResettableInterface
     }
 
 
-
     /**
      *    _generate_config_option_name
      *
@@ -718,7 +704,6 @@ final class EE_Config implements ResettableInterface
     {
         return 'ee_config-' . strtolower($section . '-' . str_replace(array('EE_', 'EED_'), '', $name));
     }
-
 
 
     /**
@@ -736,7 +721,6 @@ final class EE_Config implements ResettableInterface
             ? $config_class
             : str_replace(' ', '_', ucwords(str_replace('_', ' ', $name))) . '_Config';
     }
-
 
 
     /**
@@ -759,8 +743,8 @@ final class EE_Config implements ResettableInterface
         }
         $config_option_name = $this->_generate_config_option_name($section, $name);
         // if the config option name hasn't been added yet to the list of option names we're tracking, then do so now
-        if (! isset($this->_addon_option_names[$config_option_name])) {
-            $this->_addon_option_names[$config_option_name] = $config_class;
+        if (! isset($this->_addon_option_names[ $config_option_name ])) {
+            $this->_addon_option_names[ $config_option_name ] = $config_class;
             $this->update_addon_option_names();
         }
         // verify the incoming config object but suppress errors
@@ -788,7 +772,6 @@ final class EE_Config implements ResettableInterface
             }
         }
     }
-
 
 
     /**
@@ -824,7 +807,7 @@ final class EE_Config implements ResettableInterface
         }
         $config_option_name = $this->_generate_config_option_name($section, $name);
         // check if config object has been added to db by seeing if config option name is in $this->_addon_option_names array
-        if (! isset($this->_addon_option_names[$config_option_name])) {
+        if (! isset($this->_addon_option_names[ $config_option_name ])) {
             // save new config to db
             if ($this->set_config($section, $name, $config_class, $config_obj)) {
                 return true;
@@ -837,7 +820,7 @@ final class EE_Config implements ResettableInterface
             if ($existing_config == $config_obj) {
                 $this->{$section}->{$name} = $config_obj;
                 return true;
-            } else if (update_option($config_option_name, $config_obj)) {
+            } elseif (update_option($config_option_name, $config_obj)) {
                 EE_Config::log($config_option_name);
                 // update wp-option for this config class
                 $this->{$section}->{$name} = $config_obj;
@@ -860,7 +843,6 @@ final class EE_Config implements ResettableInterface
         }
         return false;
     }
-
 
 
     /**
@@ -910,7 +892,6 @@ final class EE_Config implements ResettableInterface
     }
 
 
-
     /**
      *    get_config_option
      *
@@ -929,7 +910,6 @@ final class EE_Config implements ResettableInterface
     }
 
 
-
     /**
      * log
      *
@@ -939,17 +919,16 @@ final class EE_Config implements ResettableInterface
     {
         if (EE_Config::logging_enabled() && ! empty($config_option_name)) {
             $config_log = get_option(EE_Config::LOG_NAME, array());
-            //copy incoming $_REQUEST and sanitize it so we can save it
+            // copy incoming $_REQUEST and sanitize it so we can save it
             $_request = $_REQUEST;
             array_walk_recursive($_request, 'sanitize_text_field');
-            $config_log[(string)microtime(true)] = array(
+            $config_log[ (string) microtime(true) ] = array(
                 'config_name' => $config_option_name,
                 'request'     => $_request,
             );
             update_option(EE_Config::LOG_NAME, $config_log);
         }
     }
-
 
 
     /**
@@ -969,7 +948,6 @@ final class EE_Config implements ResettableInterface
             update_option(EE_Config::LOG_NAME, $config_log);
         }
     }
-
 
 
     /**
@@ -993,7 +971,6 @@ final class EE_Config implements ResettableInterface
     }
 
 
-
     /**
      *    register_shortcodes_and_modules.
      *    At this point, it's too early to tell if we're maintenance mode or not.
@@ -1010,7 +987,6 @@ final class EE_Config implements ResettableInterface
     }
 
 
-
     /**
      *    initialize_shortcodes_and_modules
      *    meaning they can start adding their hooks to get stuff done
@@ -1025,7 +1001,6 @@ final class EE_Config implements ResettableInterface
     }
 
 
-
     /**
      *    widgets_init
      *
@@ -1034,10 +1009,9 @@ final class EE_Config implements ResettableInterface
      */
     public function widgets_init()
     {
-        //only init widgets on admin pages when not in complete maintenance, and
-        //on frontend when not in any maintenance mode
-        if (
-            ! EE_Maintenance_Mode::instance()->level()
+        // only init widgets on admin pages when not in complete maintenance, and
+        // on frontend when not in any maintenance mode
+        if (! EE_Maintenance_Mode::instance()->level()
             || (
                 is_admin()
                 && EE_Maintenance_Mode::instance()->level() !== EE_Maintenance_Mode::level_2_complete_maintenance
@@ -1066,7 +1040,6 @@ final class EE_Config implements ResettableInterface
     }
 
 
-
     /**
      *    register_ee_widget - makes core aware of this widget
      *
@@ -1079,7 +1052,7 @@ final class EE_Config implements ResettableInterface
         do_action('AHEE__EE_Config__register_widget__begin', $widget_path);
         $widget_ext = '.widget.php';
         // make all separators match
-        $widget_path = rtrim(str_replace('/\\', DS, $widget_path), DS);
+        $widget_path = rtrim(str_replace('\\', DS, $widget_path), DS);
         // does the file path INCLUDE the actual file name as part of the path ?
         if (strpos($widget_path, $widget_ext) !== false) {
             // grab and shortcode file name from directory name and break apart at dots
@@ -1089,7 +1062,7 @@ final class EE_Config implements ResettableInterface
             // sanitize shortcode directory name
             $widget = sanitize_key($widget);
             // now we need to rebuild the shortcode path
-            $widget_path = explode(DS, $widget_path);
+            $widget_path = explode('/', $widget_path);
             // remove last segment
             array_pop($widget_path);
             // glue it back together
@@ -1103,20 +1076,20 @@ final class EE_Config implements ResettableInterface
         // add class prefix
         $widget_class = 'EEW_' . $widget;
         // does the widget exist ?
-        if (! is_readable($widget_path . DS . $widget_class . $widget_ext)) {
+        if (! is_readable($widget_path . '/' . $widget_class . $widget_ext)) {
             $msg = sprintf(
                 __(
                     'The requested %s widget file could not be found or is not readable due to file permissions. Please ensure the following path is correct: %s',
                     'event_espresso'
                 ),
                 $widget_class,
-                $widget_path . DS . $widget_class . $widget_ext
+                $widget_path . '/' . $widget_class . $widget_ext
             );
             EE_Error::add_error($msg . '||' . $msg, __FILE__, __FUNCTION__, __LINE__);
             return;
         }
         // load the widget class file
-        require_once($widget_path . DS . $widget_class . $widget_ext);
+        require_once($widget_path . '/' . $widget_class . $widget_ext);
         // verify that class exists
         if (! class_exists($widget_class)) {
             $msg = sprintf(__('The requested %s widget class does not exist.', 'event_espresso'), $widget_class);
@@ -1125,9 +1098,8 @@ final class EE_Config implements ResettableInterface
         }
         register_widget($widget_class);
         // add to array of registered widgets
-        EE_Registry::instance()->widgets->{$widget_class} = $widget_path . DS . $widget_class . $widget_ext;
+        EE_Registry::instance()->widgets->{$widget_class} = $widget_path . '/' . $widget_class . $widget_ext;
     }
-
 
 
     /**
@@ -1149,8 +1121,7 @@ final class EE_Config implements ResettableInterface
             // loop through folders
             foreach ($modules_to_register as $module_path) {
                 /**TEMPORARILY EXCLUDE gateways from modules for time being**/
-                if (
-                    $module_path !== EE_MODULES . 'zzz-copy-this-module-template'
+                if ($module_path !== EE_MODULES . 'zzz-copy-this-module-template'
                     && $module_path !== EE_MODULES . 'gateways'
                 ) {
                     // add to list of installed modules
@@ -1166,7 +1137,6 @@ final class EE_Config implements ResettableInterface
     }
 
 
-
     /**
      *    register_module - makes core aware of this module
      *
@@ -1179,17 +1149,17 @@ final class EE_Config implements ResettableInterface
         do_action('AHEE__EE_Config__register_module__begin', $module_path);
         $module_ext = '.module.php';
         // make all separators match
-        $module_path = str_replace(array('\\', '/'), DS, $module_path);
+        $module_path = str_replace(array('\\', '/'), '/', $module_path);
         // does the file path INCLUDE the actual file name as part of the path ?
         if (strpos($module_path, $module_ext) !== false) {
             // grab and shortcode file name from directory name and break apart at dots
             $module_file = explode('.', basename($module_path));
             // now we need to rebuild the shortcode path
-            $module_path = explode(DS, $module_path);
+            $module_path = explode('/', $module_path);
             // remove last segment
             array_pop($module_path);
             // glue it back together
-            $module_path = implode(DS, $module_path) . DS;
+            $module_path = implode('/', $module_path) . '/';
             // take first segment from file name pieces and sanitize it
             $module = preg_replace('/[^a-zA-Z0-9_\-]/', '', $module_file[0]);
             // ensure class prefix is added
@@ -1200,14 +1170,14 @@ final class EE_Config implements ResettableInterface
             $module = strtolower(basename($module_path));
             $module = preg_replace('/[^a-z0-9_\-]/', '', $module);
             // like trailingslashit()
-            $module_path = rtrim($module_path, DS) . DS;
+            $module_path = rtrim($module_path, '/') . '/';
             // create classname from module directory name
             $module = str_replace(' ', '_', ucwords(str_replace('_', ' ', $module)));
             // add class prefix
             $module_class = 'EED_' . $module;
         }
         // does the module exist ?
-        if (! is_readable($module_path . DS . $module_class . $module_ext)) {
+        if (! is_readable($module_path . '/' . $module_class . $module_ext)) {
             $msg = sprintf(
                 __(
                     'The requested %s module file could not be found or is not readable due to file permissions.',
@@ -1237,7 +1207,6 @@ final class EE_Config implements ResettableInterface
     }
 
 
-
     /**
      *    _initialize_modules
      *    allow modules to set hooks for the rest of the system
@@ -1263,7 +1232,6 @@ final class EE_Config implements ResettableInterface
             }
         }
     }
-
 
 
     /**
@@ -1299,10 +1267,9 @@ final class EE_Config implements ResettableInterface
             EE_Error::add_error($msg . '||' . $msg, __FILE__, __FUNCTION__, __LINE__);
             return false;
         }
-        EE_Config::$_module_route_map[$key][$route] = array('EED_' . $module, $method_name);
+        EE_Config::$_module_route_map[ (string) $key ][ (string) $route ] = array('EED_' . $module, $method_name);
         return true;
     }
-
 
 
     /**
@@ -1316,13 +1283,12 @@ final class EE_Config implements ResettableInterface
     public static function get_route($route = null, $key = 'ee')
     {
         do_action('AHEE__EE_Config__get_route__begin', $route);
-        $route = (string)apply_filters('FHEE__EE_Config__get_route', $route);
-        if (isset(EE_Config::$_module_route_map[$key][$route])) {
-            return EE_Config::$_module_route_map[$key][$route];
+        $route = (string) apply_filters('FHEE__EE_Config__get_route', $route);
+        if (isset(EE_Config::$_module_route_map[ $key ][ $route ])) {
+            return EE_Config::$_module_route_map[ $key ][ $route ];
         }
         return null;
     }
-
 
 
     /**
@@ -1335,7 +1301,6 @@ final class EE_Config implements ResettableInterface
     {
         return EE_Config::$_module_route_map;
     }
-
 
 
     /**
@@ -1352,7 +1317,7 @@ final class EE_Config implements ResettableInterface
     public static function register_forward($route = null, $status = 0, $forward = null, $key = 'ee')
     {
         do_action('AHEE__EE_Config__register_forward', $route, $status, $forward);
-        if (! isset(EE_Config::$_module_route_map[$key][$route]) || empty($route)) {
+        if (! isset(EE_Config::$_module_route_map[ $key ][ $route ]) || empty($route)) {
             $msg = sprintf(
                 __('The module route %s for this forward has not been registered.', 'event_espresso'),
                 $route
@@ -1383,7 +1348,7 @@ final class EE_Config implements ResettableInterface
                 EE_Error::add_error($msg . '||' . $msg, __FILE__, __FUNCTION__, __LINE__);
                 return false;
             }
-        } else if (! function_exists($forward)) {
+        } elseif (! function_exists($forward)) {
             $msg = sprintf(
                 __('The function %s for the %s forwarding route is in invalid.', 'event_espresso'),
                 $forward,
@@ -1392,10 +1357,9 @@ final class EE_Config implements ResettableInterface
             EE_Error::add_error($msg . '||' . $msg, __FILE__, __FUNCTION__, __LINE__);
             return false;
         }
-        EE_Config::$_module_forward_map[$key][$route][absint($status)] = $forward;
+        EE_Config::$_module_forward_map[ $key ][ $route ][ absint($status) ] = $forward;
         return true;
     }
-
 
 
     /**
@@ -1411,17 +1375,16 @@ final class EE_Config implements ResettableInterface
     public static function get_forward($route = null, $status = 0, $key = 'ee')
     {
         do_action('AHEE__EE_Config__get_forward__begin', $route, $status);
-        if (isset(EE_Config::$_module_forward_map[$key][$route][$status])) {
+        if (isset(EE_Config::$_module_forward_map[ $key ][ $route ][ $status ])) {
             return apply_filters(
                 'FHEE__EE_Config__get_forward',
-                EE_Config::$_module_forward_map[$key][$route][$status],
+                EE_Config::$_module_forward_map[ $key ][ $route ][ $status ],
                 $route,
                 $status
             );
         }
         return null;
     }
-
 
 
     /**
@@ -1439,7 +1402,7 @@ final class EE_Config implements ResettableInterface
     public static function register_view($route = null, $status = 0, $view = null, $key = 'ee')
     {
         do_action('AHEE__EE_Config__register_view__begin', $route, $status, $view);
-        if (! isset(EE_Config::$_module_route_map[$key][$route]) || empty($route)) {
+        if (! isset(EE_Config::$_module_route_map[ $key ][ $route ]) || empty($route)) {
             $msg = sprintf(
                 __('The module route %s for this view has not been registered.', 'event_espresso'),
                 $route
@@ -1458,10 +1421,9 @@ final class EE_Config implements ResettableInterface
             EE_Error::add_error($msg . '||' . $msg, __FILE__, __FUNCTION__, __LINE__);
             return false;
         }
-        EE_Config::$_module_view_map[$key][$route][absint($status)] = $view;
+        EE_Config::$_module_view_map[ $key ][ $route ][ absint($status) ] = $view;
         return true;
     }
-
 
 
     /**
@@ -1477,10 +1439,10 @@ final class EE_Config implements ResettableInterface
     public static function get_view($route = null, $status = 0, $key = 'ee')
     {
         do_action('AHEE__EE_Config__get_view__begin', $route, $status);
-        if (isset(EE_Config::$_module_view_map[$key][$route][$status])) {
+        if (isset(EE_Config::$_module_view_map[ $key ][ $route ][ $status ])) {
             return apply_filters(
                 'FHEE__EE_Config__get_view',
-                EE_Config::$_module_view_map[$key][$route][$status],
+                EE_Config::$_module_view_map[ $key ][ $route ][ $status ],
                 $route,
                 $status
             );
@@ -1489,12 +1451,10 @@ final class EE_Config implements ResettableInterface
     }
 
 
-
     public function update_addon_option_names()
     {
         update_option(EE_Config::ADDON_OPTION_NAMES, $this->_addon_option_names);
     }
-
 
 
     public function shutdown()
@@ -1503,21 +1463,19 @@ final class EE_Config implements ResettableInterface
     }
 
 
-
     /**
      * @return LegacyShortcodesManager
      */
     public static function getLegacyShortcodesManager()
     {
 
-        if ( ! EE_Config::instance()->legacy_shortcodes_manager instanceof LegacyShortcodesManager) {
+        if (! EE_Config::instance()->legacy_shortcodes_manager instanceof LegacyShortcodesManager) {
             EE_Config::instance()->legacy_shortcodes_manager = new LegacyShortcodesManager(
                 EE_Registry::instance()
             );
         }
         return EE_Config::instance()->legacy_shortcodes_manager;
     }
-
 
 
     /**
@@ -1539,12 +1497,7 @@ final class EE_Config implements ResettableInterface
         );
         return EE_Config::instance()->getLegacyShortcodesManager()->registerShortcode($shortcode_path);
     }
-
-
-
 }
-
-
 
 /**
  * Base class used for config classes. These classes should generally not have
@@ -1575,7 +1528,7 @@ class EE_Config_Base
                 )
             );
         }
-        //just handling escaping of strings for now.
+        // just handling escaping of strings for now.
         if (is_string($this->{$property})) {
             return stripslashes($this->{$property});
         }
@@ -1583,23 +1536,21 @@ class EE_Config_Base
     }
 
 
-
     public function populate()
     {
-        //grab defaults via a new instance of this class.
+        // grab defaults via a new instance of this class.
         $class_name = get_class($this);
         $defaults = new $class_name;
-        //loop through the properties for this class and see if they are set.  If they are NOT, then grab the
-        //default from our $defaults object.
+        // loop through the properties for this class and see if they are set.  If they are NOT, then grab the
+        // default from our $defaults object.
         foreach (get_object_vars($defaults) as $property => $value) {
             if ($this->{$property} === null) {
                 $this->{$property} = $value;
             }
         }
-        //cleanup
+        // cleanup
         unset($defaults);
     }
-
 
 
     /**
@@ -1614,7 +1565,6 @@ class EE_Config_Base
     }
 
 
-
     /**
      *        __unset
      *
@@ -1627,14 +1577,12 @@ class EE_Config_Base
     }
 
 
-
     /**
      *        __clone
      */
     public function __clone()
     {
     }
-
 
 
     /**
@@ -1645,7 +1593,6 @@ class EE_Config_Base
     }
 
 
-
     /**
      *        __destruct
      */
@@ -1654,13 +1601,14 @@ class EE_Config_Base
     }
 }
 
-
-
 /**
  * Class for defining what's in the EE_Config relating to registration settings
  */
 class EE_Core_Config extends EE_Config_Base
 {
+
+    const OPTION_NAME_UXIP = 'ee_ueip_optin';
+
 
     public $current_blog_id;
 
@@ -1715,7 +1663,6 @@ class EE_Core_Config extends EE_Config_Base
      */
     public $event_cpt_slug;
 
-
     /**
      * This caches the _ee_ueip_option in case this config is reset in the same
      * request across blog switches in a multisite context.
@@ -1724,7 +1671,6 @@ class EE_Core_Config extends EE_Config_Base
      * @var bool
      */
     public static $ee_ueip_option;
-
 
 
     /**
@@ -1753,15 +1699,14 @@ class EE_Core_Config extends EE_Config_Base
         $this->txn_page_url = '';
         $this->thank_you_page_url = '';
         $this->cancel_page_url = '';
-        //cpt slugs
+        // cpt slugs
         $this->event_cpt_slug = __('events', 'event_espresso');
-        //ueip constant check
+        // ueip constant check
         if (defined('EE_DISABLE_UXIP') && EE_DISABLE_UXIP) {
             $this->ee_ueip_optin = false;
             $this->ee_ueip_has_notified = true;
         }
     }
-
 
 
     /**
@@ -1778,7 +1723,6 @@ class EE_Core_Config extends EE_Config_Base
     }
 
 
-
     /**
      * @return array
      */
@@ -1793,7 +1737,6 @@ class EE_Core_Config extends EE_Config_Base
     }
 
 
-
     /**
      *  gets/returns URL for EE reg_page
      *
@@ -1804,13 +1747,12 @@ class EE_Core_Config extends EE_Config_Base
     {
         if (! $this->reg_page_url) {
             $this->reg_page_url = add_query_arg(
-                                      array('uts' => time()),
-                                      get_permalink($this->reg_page_id)
-                                  ) . '#checkout';
+                array('uts' => time()),
+                get_permalink($this->reg_page_id)
+            ) . '#checkout';
         }
         return $this->reg_page_url;
     }
-
 
 
     /**
@@ -1834,7 +1776,6 @@ class EE_Core_Config extends EE_Config_Base
     }
 
 
-
     /**
      *  gets/returns URL for EE thank_you_page
      *
@@ -1856,7 +1797,6 @@ class EE_Core_Config extends EE_Config_Base
     }
 
 
-
     /**
      *  gets/returns URL for EE cancel_page
      *
@@ -1870,7 +1810,6 @@ class EE_Core_Config extends EE_Config_Base
         }
         return $this->cancel_page_url;
     }
-
 
 
     /**
@@ -1887,51 +1826,70 @@ class EE_Core_Config extends EE_Config_Base
     }
 
 
-
     /**
      * Used to return what the optin value is set for the EE User Experience Program.
      * This accounts for multisite and this value being requested for a subsite.  In multisite, the value is set
      * on the main site only.
      *
-     * @return mixed|void
+     * @return bool
      */
     protected function _get_main_ee_ueip_optin()
     {
-        //if this is the main site then we can just bypass our direct query.
+        // if this is the main site then we can just bypass our direct query.
         if (is_main_site()) {
-            return get_option('ee_ueip_optin', false);
+            return get_option(self::OPTION_NAME_UXIP, false);
         }
-        //is this already cached for this request?  If so use it.
-        if ( ! empty(EE_Core_Config::$ee_ueip_option)) {
+        // is this already cached for this request?  If so use it.
+        if (EE_Core_Config::$ee_ueip_option !== null) {
             return EE_Core_Config::$ee_ueip_option;
         }
         global $wpdb;
         $current_network_main_site = is_multisite() ? get_current_site() : null;
         $current_main_site_id = ! empty($current_network_main_site) ? $current_network_main_site->blog_id : 1;
-        $option = 'ee_ueip_optin';
-        //set correct table for query
+        $option = self::OPTION_NAME_UXIP;
+        // set correct table for query
         $table_name = $wpdb->get_blog_prefix($current_main_site_id) . 'options';
-        //rather than getting blog option for the $current_main_site_id, we do a direct $wpdb query because
-        //get_blog_option() does a switch_to_blog an that could cause infinite recursion because EE_Core_Config might be
-        //re-constructed on the blog switch.  Note, we are still executing any core wp filters on this option retrieval.
-        //this bit of code is basically a direct copy of get_option without any caching because we are NOT switched to the blog
-        //for the purpose of caching.
+        // rather than getting blog option for the $current_main_site_id, we do a direct $wpdb query because
+        // get_blog_option() does a switch_to_blog an that could cause infinite recursion because EE_Core_Config might be
+        // re-constructed on the blog switch.  Note, we are still executing any core wp filters on this option retrieval.
+        // this bit of code is basically a direct copy of get_option without any caching because we are NOT switched to the blog
+        // for the purpose of caching.
         $pre = apply_filters('pre_option_' . $option, false, $option);
         if (false !== $pre) {
             EE_Core_Config::$ee_ueip_option = $pre;
             return EE_Core_Config::$ee_ueip_option;
         }
-        $row = $wpdb->get_row($wpdb->prepare("SELECT option_value FROM $table_name WHERE option_name = %s LIMIT 1",
-            $option));
+        $row = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT option_value FROM $table_name WHERE option_name = %s LIMIT 1",
+                $option
+            )
+        );
         if (is_object($row)) {
             $value = $row->option_value;
-        } else { //option does not exist so use default.
-            return apply_filters('default_option_' . $option, false, $option);
+        } else { // option does not exist so use default.
+            EE_Core_Config::$ee_ueip_option =  apply_filters('default_option_' . $option, false, $option);
+            return EE_Core_Config::$ee_ueip_option;
         }
         EE_Core_Config::$ee_ueip_option = apply_filters('option_' . $option, maybe_unserialize($value), $option);
         return EE_Core_Config::$ee_ueip_option;
     }
 
+
+    /**
+     * Utility function for escaping the value of a property and returning.
+     *
+     * @param string $property property name (checks to see if exists).
+     * @return mixed if a detected type found return the escaped value, otherwise just the raw value is returned.
+     * @throws \EE_Error
+     */
+    public function get_pretty($property)
+    {
+        if ($property === self::OPTION_NAME_UXIP) {
+            return $this->ee_ueip_optin ? 'yes' : 'no';
+        }
+        return parent::get_pretty($property);
+    }
 
 
     /**
@@ -1942,15 +1900,12 @@ class EE_Core_Config extends EE_Config_Base
      */
     public function __sleep()
     {
-        //reset all url properties
+        // reset all url properties
         $this->_reset_urls();
-        //return what to save to db
+        // return what to save to db
         return array_keys(get_object_vars($this));
     }
-
 }
-
-
 
 /**
  * Config class for storing info on the Organization
@@ -1968,37 +1923,37 @@ class EE_Organization_Config extends EE_Config_Base
      * @var string $address_1
      * eg 123 Onna Road
      */
-    public $address_1;
+    public $address_1 = '';
 
     /**
      * @var string $address_2
      * eg PO Box 123
      */
-    public $address_2;
+    public $address_2 = '';
 
     /**
      * @var string $city
      * eg Inna City
      */
-    public $city;
+    public $city = '';
 
     /**
      * @var int $STA_ID
      * eg 4
      */
-    public $STA_ID;
+    public $STA_ID = 0;
 
     /**
      * @var string $CNT_ISO
      * eg US
      */
-    public $CNT_ISO;
+    public $CNT_ISO = '';
 
     /**
      * @var string $zip
      * eg 12345  or V1A 2B3
      */
-    public $zip;
+    public $zip = '';
 
     /**
      * @var string $email
@@ -2006,26 +1961,23 @@ class EE_Organization_Config extends EE_Config_Base
      */
     public $email;
 
-
     /**
      * @var string $phone
      * eg. 111-111-1111
      */
-    public $phone;
-
+    public $phone = '';
 
     /**
      * @var string $vat
      * VAT/Tax Number
      */
-    public $vat;
+    public $vat = '';
 
     /**
      * @var string $logo_url
      * eg http://www.somedomain.com/wp-content/uploads/kittehs.jpg
      */
-    public $logo_url;
-
+    public $logo_url = '';
 
     /**
      * The below are all various properties for holding links to organization social network profiles
@@ -2037,48 +1989,42 @@ class EE_Organization_Config extends EE_Config_Base
      *
      * @var string
      */
-    public $facebook;
-
+    public $facebook = '';
 
     /**
      * twitter (twitter.com/twitter_handle)
      *
      * @var string
      */
-    public $twitter;
-
+    public $twitter = '';
 
     /**
      * linkedin (linkedin.com/in/profile_name)
      *
      * @var string
      */
-    public $linkedin;
-
+    public $linkedin = '';
 
     /**
      * pinterest (www.pinterest.com/profile_name)
      *
      * @var string
      */
-    public $pinterest;
-
+    public $pinterest = '';
 
     /**
      * google+ (google.com/+profileName)
      *
      * @var string
      */
-    public $google;
-
+    public $google = '';
 
     /**
      * instagram (instagram.com/handle)
      *
      * @var string
      */
-    public $instagram;
-
+    public $instagram = '';
 
 
     /**
@@ -2089,28 +2035,11 @@ class EE_Organization_Config extends EE_Config_Base
     public function __construct()
     {
         // set default organization settings
-        $this->name = get_bloginfo('name');
-        $this->address_1 = '123 Onna Road';
-        $this->address_2 = 'PO Box 123';
-        $this->city = 'Inna City';
-        $this->STA_ID = 4;
-        $this->CNT_ISO = 'US';
-        $this->zip = '12345';
+        // decode HTML entities from the WP blogname, because it's stored in the DB with HTML entities encoded
+        $this->name = wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES);
         $this->email = get_bloginfo('admin_email');
-        $this->phone = '';
-        $this->vat = '123456789';
-        $this->logo_url = '';
-        $this->facebook = '';
-        $this->twitter = '';
-        $this->linkedin = '';
-        $this->pinterest = '';
-        $this->google = '';
-        $this->instagram = '';
     }
-
 }
-
-
 
 /**
  * Class for defining what's in the EE_Config relating to currency
@@ -2177,7 +2106,6 @@ class EE_Currency_Config extends EE_Config_Base
     public $thsnds;
 
 
-
     /**
      *    class constructor
      *
@@ -2197,8 +2125,7 @@ class EE_Currency_Config extends EE_Config_Base
         // but override if requested
         $CNT_ISO = ! empty($CNT_ISO) ? $CNT_ISO : $ORG_CNT;
         // so if that all went well, and we are not in M-Mode (cuz you can't query the db in M-Mode) and double-check the countries table exists
-        if (
-            ! empty($CNT_ISO)
+        if (! empty($CNT_ISO)
             && EE_Maintenance_Mode::instance()->models_can_query()
             && $table_analysis->tableExists(EE_Registry::instance()->load_model('Country')->table())
         ) {
@@ -2209,10 +2136,13 @@ class EE_Currency_Config extends EE_Config_Base
                 $this->name = $country->currency_name_single();    // Dollar
                 $this->plural = $country->currency_name_plural();    // Dollars
                 $this->sign = $country->currency_sign();            // currency sign: $
-                $this->sign_b4 = $country->currency_sign_before();        // currency sign before or after: $TRUE  or  FALSE$
+                $this->sign_b4 = $country->currency_sign_before(
+                );        // currency sign before or after: $TRUE  or  FALSE$
                 $this->dec_plc = $country->currency_decimal_places();    // decimal places: 2 = 0.00  3 = 0.000
-                $this->dec_mrk = $country->currency_decimal_mark();    // decimal mark: (comma) ',' = 0,01   or (decimal) '.' = 0.01
-                $this->thsnds = $country->currency_thousands_separator();    // thousands separator: (comma) ',' = 1,000   or (decimal) '.' = 1.000
+                $this->dec_mrk = $country->currency_decimal_mark(
+                );    // decimal mark: (comma) ',' = 0,01   or (decimal) '.' = 0.01
+                $this->thsnds = $country->currency_thousands_separator(
+                );    // thousands separator: (comma) ',' = 1,000   or (decimal) '.' = 1.000
             }
         }
         // fallback to hardcoded defaults, in case the above failed
@@ -2230,8 +2160,6 @@ class EE_Currency_Config extends EE_Config_Base
     }
 }
 
-
-
 /**
  * Class for defining what's in the EE_Config relating to registration settings
  */
@@ -2246,14 +2174,13 @@ class EE_Registration_Config extends EE_Config_Base
      */
     public $default_STS_ID;
 
-
     /**
      * For new events, this will be the default value for the maximum number of tickets (equivalent to maximum number of
      * registrations)
+     *
      * @var int
      */
     public $default_maximum_number_of_tickets;
-
 
     /**
      * level of validation to apply to email addresses
@@ -2321,9 +2248,17 @@ class EE_Registration_Config extends EE_Config_Base
      * ReCaptcha Theme
      *
      * @var string $recaptcha_theme
-     *    options: 'dark    ', 'light'
+     *    options: 'dark', 'light', 'invisible'
      */
     public $recaptcha_theme;
+
+    /**
+     * ReCaptcha Badge - determines the position of the reCAPTCHA badge if using Invisible ReCaptcha.
+     *
+     * @var string $recaptcha_badge
+     *    options: 'bottomright', 'bottomleft', 'inline'
+     */
+    public $recaptcha_badge;
 
     /**
      * ReCaptcha Type
@@ -2356,6 +2291,13 @@ class EE_Registration_Config extends EE_Config_Base
     public $recaptcha_privatekey;
 
     /**
+     * array of form names protected by ReCaptcha
+     *
+     * @var array $recaptcha_protected_forms
+     */
+    public $recaptcha_protected_forms;
+
+    /**
      * ReCaptcha width
      *
      * @var int $recaptcha_width
@@ -2370,6 +2312,32 @@ class EE_Registration_Config extends EE_Config_Base
      */
     protected $track_invalid_checkout_access = true;
 
+    /**
+     * Whether or not to show the privacy policy consent checkbox
+     *
+     * @var bool
+     */
+    public $consent_checkbox_enabled;
+
+    /**
+     * Label text to show on the checkbox
+     *
+     * @var string
+     */
+    public $consent_checkbox_label_text;
+
+    /*
+     * String describing how long to keep payment logs. Passed into DateTime constructor
+     * @var string
+     */
+    public $gateway_log_lifespan = '1 week';
+
+    /**
+     * Enable copy attendee info at form
+     *
+     * @var boolean $enable_copy_attendee
+     */
+    protected $copy_attendee_info = true;
 
 
     /**
@@ -2383,21 +2351,26 @@ class EE_Registration_Config extends EE_Config_Base
         $this->default_STS_ID = EEM_Registration::status_id_pending_payment;
         $this->email_validation_level = 'wp_default';
         $this->show_pending_payment_options = true;
-        $this->skip_reg_confirmation = false;
+        $this->skip_reg_confirmation = true;
         $this->reg_steps = array();
         $this->reg_confirmation_last = false;
         $this->use_bot_trap = true;
         $this->use_encryption = true;
         $this->use_captcha = false;
         $this->recaptcha_theme = 'light';
+        $this->recaptcha_badge = 'bottomleft';
         $this->recaptcha_type = 'image';
         $this->recaptcha_language = 'en';
         $this->recaptcha_publickey = null;
         $this->recaptcha_privatekey = null;
+        $this->recaptcha_protected_forms = array();
         $this->recaptcha_width = 500;
         $this->default_maximum_number_of_tickets = 10;
+        $this->consent_checkbox_enabled = false;
+        $this->consent_checkbox_label_text = '';
+        $this->gateway_log_lifespan = '7 days';
+        $this->copy_attendee_info = true;
     }
-
 
 
     /**
@@ -2409,13 +2382,13 @@ class EE_Registration_Config extends EE_Config_Base
     {
         add_action('AHEE__EE_Config___load_core_config__end', array($this, 'set_default_reg_status_on_EEM_Event'));
         add_action('AHEE__EE_Config___load_core_config__end', array($this, 'set_default_max_ticket_on_EEM_Event'));
+        add_action('setup_theme', array($this, 'setDefaultCheckboxLabelText'));
     }
 
 
-
     /**
-     * Hooked into `AHEE__EE_Config___load_core_config__end` to ensure the default for the EVT_default_registration_status
-     * field matches the config setting for default_STS_ID.
+     * Hooked into `AHEE__EE_Config___load_core_config__end` to ensure the default for the
+     * EVT_default_registration_status field matches the config setting for default_STS_ID.
      */
     public function set_default_reg_status_on_EEM_Event()
     {
@@ -2433,6 +2406,47 @@ class EE_Registration_Config extends EE_Config_Base
     }
 
 
+    /**
+     * Sets the default consent checkbox text. This needs to be done a bit later than when EE_Registration_Config is
+     * constructed because that happens before we can get the privacy policy page's permalink.
+     *
+     * @throws InvalidArgumentException
+     * @throws \EventEspresso\core\exceptions\InvalidDataTypeException
+     * @throws \EventEspresso\core\exceptions\InvalidInterfaceException
+     */
+    public function setDefaultCheckboxLabelText()
+    {
+        if ($this->getConsentCheckboxLabelText() === null
+            || $this->getConsentCheckboxLabelText() === '') {
+            $opening_a_tag = '';
+            $closing_a_tag = '';
+            if (function_exists('get_privacy_policy_url')) {
+                $privacy_page_url = get_privacy_policy_url();
+                if (! empty($privacy_page_url)) {
+                    $opening_a_tag = '<a href="' . $privacy_page_url . '" target="_blank">';
+                    $closing_a_tag = '</a>';
+                }
+            }
+            $loader = LoaderFactory::getLoader();
+            $org_config = $loader->getShared('EE_Organization_Config');
+            /**
+             * @var $org_config EE_Organization_Config
+             */
+
+            $this->setConsentCheckboxLabelText(
+                sprintf(
+                    esc_html__(
+                        'I consent to %1$s storing and using my personal information, according to their %2$sprivacy policy%3$s.',
+                        'event_espresso'
+                    ),
+                    $org_config->name,
+                    $opening_a_tag,
+                    $closing_a_tag
+                )
+            );
+        }
+    }
+
 
     /**
      * @return boolean
@@ -2441,7 +2455,6 @@ class EE_Registration_Config extends EE_Config_Base
     {
         return $this->track_invalid_checkout_access;
     }
-
 
 
     /**
@@ -2455,11 +2468,84 @@ class EE_Registration_Config extends EE_Config_Base
         );
     }
 
+    /**
+     * @return boolean
+     */
+    public function copyAttendeeInfo()
+    {
+        return $this->copy_attendee_info;
+    }
 
 
+    /**
+     * @param boolean $copy_attendee_info
+     */
+    public function setCopyAttendeeInfo($copy_attendee_info)
+    {
+        $this->copy_attendee_info = filter_var(
+            $copy_attendee_info,
+            FILTER_VALIDATE_BOOLEAN
+        );
+    }
+
+
+    /**
+     * Gets the options to make availalbe for the gateway log lifespan
+     * @return array
+     */
+    public function gatewayLogLifespanOptions()
+    {
+        return (array) apply_filters(
+            'FHEE_EE_Admin_Config__gatewayLogLifespanOptions',
+            array(
+                '1 second' => esc_html__('Don\'t Log At All', 'event_espresso'),
+                '1 day' => esc_html__('1 Day', 'event_espresso'),
+                '7 days' => esc_html__('7 Days', 'event_espresso'),
+                '14 days' => esc_html__('14 Days', 'event_espresso'),
+                '30 days' => esc_html__('30 Days', 'event_espresso')
+            )
+        );
+    }
+
+
+    /**
+     * @return bool
+     */
+    public function isConsentCheckboxEnabled()
+    {
+        return $this->consent_checkbox_enabled;
+    }
+
+
+    /**
+     * @param bool $consent_checkbox_enabled
+     */
+    public function setConsentCheckboxEnabled($consent_checkbox_enabled)
+    {
+        $this->consent_checkbox_enabled = filter_var(
+            $consent_checkbox_enabled,
+            FILTER_VALIDATE_BOOLEAN
+        );
+    }
+
+
+    /**
+     * @return string
+     */
+    public function getConsentCheckboxLabelText()
+    {
+        return $this->consent_checkbox_label_text;
+    }
+
+
+    /**
+     * @param string $consent_checkbox_label_text
+     */
+    public function setConsentCheckboxLabelText($consent_checkbox_label_text)
+    {
+        $this->consent_checkbox_label_text = (string) $consent_checkbox_label_text;
+    }
 }
-
-
 
 /**
  * Class for defining what's in the EE_Config relating to admin settings
@@ -2486,11 +2572,6 @@ class EE_Admin_Config extends EE_Config_Base
      * @var boolean $use_event_timezones
      */
     public $use_event_timezones;
-
-    /**
-     * @var boolean $use_full_logging
-     */
-    public $use_full_logging;
 
     /**
      * @var string $log_file_name
@@ -2540,7 +2621,6 @@ class EE_Admin_Config extends EE_Config_Base
     private $encode_session_data = false;
 
 
-
     /**
      *    class constructor
      *
@@ -2553,15 +2633,16 @@ class EE_Admin_Config extends EE_Config_Base
         $this->use_dashboard_widget = true;
         $this->events_in_dashboard = 30;
         $this->use_event_timezones = false;
-        $this->use_full_logging = false;
         $this->use_remote_logging = false;
         $this->remote_logging_url = null;
-        $this->show_reg_footer = true;
+        $this->show_reg_footer = apply_filters(
+            'FHEE__EE_Admin_Config__show_reg_footer__default',
+            false
+        );
         $this->affiliate_id = 'default';
-        $this->help_tour_activation = true;
+        $this->help_tour_activation = false;
         $this->encode_session_data = false;
     }
-
 
 
     /**
@@ -2578,7 +2659,6 @@ class EE_Admin_Config extends EE_Config_Base
     }
 
 
-
     /**
      * @param bool $reset
      * @return string
@@ -2593,7 +2673,6 @@ class EE_Admin_Config extends EE_Config_Base
     }
 
 
-
     /**
      * @return string
      */
@@ -2601,7 +2680,6 @@ class EE_Admin_Config extends EE_Config_Base
     {
         return ! empty($this->affiliate_id) ? $this->affiliate_id : 'default';
     }
-
 
 
     /**
@@ -2613,7 +2691,6 @@ class EE_Admin_Config extends EE_Config_Base
     }
 
 
-
     /**
      * @param boolean $encode_session_data
      */
@@ -2621,12 +2698,7 @@ class EE_Admin_Config extends EE_Config_Base
     {
         $this->encode_session_data = filter_var($encode_session_data, FILTER_VALIDATE_BOOLEAN);
     }
-
-
-
 }
-
-
 
 /**
  * Class for defining what's in the EE_Config relating to template settings
@@ -2680,7 +2752,6 @@ class EE_Template_Config extends EE_Config_Base
     public $EED_Events_Archive;
 
 
-
     /**
      *    class constructor
      *
@@ -2699,10 +2770,7 @@ class EE_Template_Config extends EE_Config_Base
         $this->EED_Events_Archive = null;
         $this->EED_Ticket_Selector = null;
     }
-
 }
-
-
 
 /**
  * Class for defining what's in the EE_Config relating to map settings
@@ -2791,7 +2859,6 @@ class EE_Map_Config extends EE_Config_Base
     public $event_list_map_align;
 
 
-
     /**
      *    class constructor
      *
@@ -2819,10 +2886,7 @@ class EE_Map_Config extends EE_Config_Base
         $this->event_list_control_type = 'dropdown';        // ee_map_type_control
         $this->event_list_map_align = 'center';            // ee_map_align
     }
-
 }
-
-
 
 /**
  * stores Events_Archive settings
@@ -2853,7 +2917,6 @@ class EE_Events_Archive_Config extends EE_Config_Base
     public $display_order_venue;
 
 
-
     /**
      *    class constructor
      */
@@ -2872,8 +2935,6 @@ class EE_Events_Archive_Config extends EE_Config_Base
         $this->display_order_venue = 130;
     }
 }
-
-
 
 /**
  * Stores Event_Single_Config settings
@@ -2896,7 +2957,6 @@ class EE_Event_Single_Config extends EE_Config_Base
     public $display_order_venue;
 
 
-
     /**
      *    class constructor
      */
@@ -2911,8 +2971,6 @@ class EE_Event_Single_Config extends EE_Config_Base
         $this->display_order_venue = 130;
     }
 }
-
-
 
 /**
  * Stores Ticket_Selector_Config settings
@@ -2962,6 +3020,12 @@ class EE_Ticket_Selector_Config extends EE_Config_Base
      */
     private $datetime_selector_threshold = 3;
 
+    /**
+     * determines the maximum number of "checked" dates in the date and time filter
+     *
+     * @var int $datetime_selector_checked
+     */
+    private $datetime_selector_max_checked = 10;
 
 
     /**
@@ -2974,8 +3038,8 @@ class EE_Ticket_Selector_Config extends EE_Config_Base
         $this->show_expired_tickets = true;
         $this->show_datetime_selector = \EE_Ticket_Selector_Config::DO_NOT_SHOW_DATETIME_SELECTOR;
         $this->datetime_selector_threshold = 3;
+        $this->datetime_selector_max_checked = 10;
     }
-
 
 
     /**
@@ -2997,7 +3061,6 @@ class EE_Ticket_Selector_Config extends EE_Config_Base
     }
 
 
-
     /**
      * @return string
      */
@@ -3005,7 +3068,6 @@ class EE_Ticket_Selector_Config extends EE_Config_Base
     {
         return $this->show_datetime_selector;
     }
-
 
 
     /**
@@ -3021,14 +3083,15 @@ class EE_Ticket_Selector_Config extends EE_Config_Base
             )
             : array(
                 \EE_Ticket_Selector_Config::DO_NOT_SHOW_DATETIME_SELECTOR => esc_html__(
-                    'Do not show date & time filter', 'event_espresso'
+                    'Do not show date & time filter',
+                    'event_espresso'
                 ),
                 \EE_Ticket_Selector_Config::MAYBE_SHOW_DATETIME_SELECTOR  => esc_html__(
-                    'Maybe show date & time filter', 'event_espresso'
+                    'Maybe show date & time filter',
+                    'event_espresso'
                 ),
             );
     }
-
 
 
     /**
@@ -3046,7 +3109,6 @@ class EE_Ticket_Selector_Config extends EE_Config_Base
     }
 
 
-
     /**
      * @return int
      */
@@ -3054,8 +3116,6 @@ class EE_Ticket_Selector_Config extends EE_Config_Base
     {
         return $this->datetime_selector_threshold;
     }
-
-
 
 
     /**
@@ -3068,10 +3128,23 @@ class EE_Ticket_Selector_Config extends EE_Config_Base
     }
 
 
+    /**
+     * @return int
+     */
+    public function getDatetimeSelectorMaxChecked()
+    {
+        return $this->datetime_selector_max_checked;
+    }
 
+
+    /**
+     * @param int $datetime_selector_max_checked
+     */
+    public function setDatetimeSelectorMaxChecked($datetime_selector_max_checked)
+    {
+        $this->datetime_selector_max_checked = absint($datetime_selector_max_checked);
+    }
 }
-
-
 
 /**
  * Stores any EE Environment values that are referenced through the code.
@@ -3091,7 +3164,6 @@ class EE_Environment_Config extends EE_Config_Base
     public $php;
 
 
-
     /**
      *    constructor
      */
@@ -3100,7 +3172,6 @@ class EE_Environment_Config extends EE_Config_Base
         $this->php = new stdClass();
         $this->_set_php_values();
     }
-
 
 
     /**
@@ -3114,7 +3185,6 @@ class EE_Environment_Config extends EE_Config_Base
         $this->php->max_input_vars = ini_get('max_input_vars');
         $this->php->version = phpversion();
     }
-
 
 
     /**
@@ -3134,22 +3204,26 @@ class EE_Environment_Config extends EE_Config_Base
     {
         if (! empty($this->php->max_input_vars)
             && ($input_count >= $this->php->max_input_vars)
-            && (PHP_MAJOR_VERSION >= 5 && PHP_MINOR_VERSION >= 3 && PHP_RELEASE_VERSION >= 9)
         ) {
-            return sprintf(
-                __(
-                    'The maximum number of inputs on this page has been exceeded.  You cannot add anymore items (i.e. tickets, datetimes, custom fields) on this page because of your servers PHP "max_input_vars" setting.%1$sThere are %2$d inputs and the maximum amount currently allowed by your server is %3$d.',
-                    'event_espresso'
-                ),
-                '<br>',
-                $input_count,
-                $this->php->max_input_vars
-            );
+            // check the server setting because the config value could be stale
+            $max_input_vars = ini_get('max_input_vars');
+            if ($input_count >= $max_input_vars) {
+                return sprintf(
+                    esc_html__(
+                        'The maximum number of inputs on this page has been exceeded. You cannot make edits to this page because of your server\'s PHP "max_input_vars" setting.%1$sThere are %2$d inputs and the maximum amount currently allowed by your server is %3$d.%1$sPlease contact your web host and ask them to raise the "max_input_vars" limit.',
+                        'event_espresso'
+                    ),
+                    '<br>',
+                    $input_count,
+                    $max_input_vars
+                );
+            } else {
+                return '';
+            }
         } else {
             return '';
         }
     }
-
 
 
     /**
@@ -3162,12 +3236,7 @@ class EE_Environment_Config extends EE_Config_Base
     {
         $this->_set_php_values();
     }
-
-
-
 }
-
-
 
 /**
  * Stores any options pertaining to taxes
@@ -3187,7 +3256,6 @@ class EE_Tax_Config extends EE_Config_Base
     public $prices_displayed_including_taxes;
 
 
-
     /**
      *    class constructor
      */
@@ -3196,7 +3264,6 @@ class EE_Tax_Config extends EE_Config_Base
         $this->prices_displayed_including_taxes = true;
     }
 }
-
 
 /**
  * Holds all global messages configuration options.
@@ -3217,11 +3284,12 @@ class EE_Messages_Config extends EE_Config_Base
      */
     public $delete_threshold;
 
-    public function __construct() {
+
+    public function __construct()
+    {
         $this->delete_threshold = 0;
     }
 }
-
 
 /**
  * stores payment gateway info
@@ -3248,7 +3316,6 @@ class EE_Gateway_Config extends EE_Config_Base
     public $active_gateways;
 
 
-
     /**
      *    class constructor
      *
@@ -3260,6 +3327,3 @@ class EE_Gateway_Config extends EE_Config_Base
         $this->active_gateways = array('Invoice' => false);
     }
 }
-
-// End of file EE_Config.core.php
-// Location: /core/EE_Config.core.php

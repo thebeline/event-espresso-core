@@ -1,12 +1,10 @@
 <?php
 
+use EventEspresso\core\exceptions\InvalidDataTypeException;
+use EventEspresso\core\exceptions\InvalidInterfaceException;
+use EventEspresso\core\exceptions\InvalidSessionDataException;
 use EventEspresso\core\exceptions\UnexpectedEntityException;
-
-if (! defined('EVENT_ESPRESSO_VERSION')) {
-    exit('No direct script access allowed');
-}
-
-
+use EventEspresso\core\services\loaders\LoaderFactory;
 
 /**
  * Class EED_Ticket_Sales_Monitor
@@ -22,7 +20,9 @@ if (! defined('EVENT_ESPRESSO_VERSION')) {
 class EED_Ticket_Sales_Monitor extends EED_Module
 {
 
-    const debug = false;    //	true false
+    const debug = false;
+
+    private static $nl = '';
 
     /**
      * an array of raw ticket data from EED_Ticket_Selector
@@ -55,7 +55,6 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     protected $decremented_tickets = array();
 
 
-
     /**
      * set_hooks - for hooking into EE Core, other modules, etc
      *
@@ -63,6 +62,7 @@ class EED_Ticket_Sales_Monitor extends EED_Module
      */
     public static function set_hooks()
     {
+        self::$nl = defined('EE_TESTS_DIR') ? "\n" : '<br />';
         // release tickets for expired carts
         add_action(
             'EED_Ticket_Selector__process_ticket_selections__before',
@@ -82,12 +82,7 @@ class EED_Ticket_Sales_Monitor extends EED_Module
             array('EED_Ticket_Sales_Monitor', 'post_notices'),
             10
         );
-        // handle ticket quantities adjusted in cart
-        //add_action(
-        //	'FHEE__EED_Multi_Event_Registration__adjust_line_item_quantity__line_item_quantity_updated',
-        //	array( 'EED_Ticket_Sales_Monitor', 'ticket_quantity_updated' ),
-        //	10, 2
-        //);
+
         // handle tickets deleted from cart
         add_action(
             'FHEE__EED_Multi_Event_Registration__delete_ticket__ticket_removed_from_cart',
@@ -137,7 +132,6 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     }
 
 
-
     /**
      * set_hooks_admin - for hooking into EE Admin Core, other modules, etc
      *
@@ -149,7 +143,6 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     }
 
 
-
     /**
      * @return EED_Ticket_Sales_Monitor|EED_Module
      */
@@ -157,7 +150,6 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     {
         return parent::get_instance(__CLASS__);
     }
-
 
 
     /**
@@ -173,7 +165,6 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     /********************************** PRE_TICKET_SALES  **********************************/
 
 
-
     /**
      * Retrieves grand totals from the line items that have no TXN ID
      * and timestamps less than the current time minus the session lifespan.
@@ -181,52 +172,69 @@ class EED_Ticket_Sales_Monitor extends EED_Module
      * We're going to release the tickets for these line items before attempting to add more to the cart.
      *
      * @return void
+     * @throws DomainException
      * @throws EE_Error
      * @throws InvalidArgumentException
-     * @throws \EventEspresso\core\exceptions\InvalidDataTypeException
-     * @throws \EventEspresso\core\exceptions\InvalidInterfaceException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws UnexpectedEntityException
      */
     public static function release_tickets_for_expired_carts()
     {
-        $expired_ticket_IDs      = array();
-        $valid_ticket_line_items = array();
-        $total_line_items        = EEM_Line_Item::instance()->get_total_line_items_with_no_transaction();
-        if (empty($total_line_items)) {
-            return;
+        if (self::debug) {
+            echo self::$nl . self::$nl . __LINE__ . ') ' . __METHOD__ . '()';
         }
-        $expired = current_time('timestamp') - EE_Registry::instance()->SSN->lifespan();
-        foreach ($total_line_items as $total_line_item) {
-            /** @var EE_Line_Item $total_line_item */
-            $ticket_line_items = EED_Ticket_Sales_Monitor::get_ticket_line_items_for_grand_total($total_line_item);
-            foreach ($ticket_line_items as $ticket_line_item) {
-                if (! $ticket_line_item instanceof EE_Line_Item) {
+        do_action('AHEE__EED_Ticket_Sales_Monitor__release_tickets_for_expired_carts__begin');
+        $expired_ticket_IDs = array();
+        /** @var EventEspresso\core\domain\values\session\SessionLifespan $session_lifespan */
+        $session_lifespan = LoaderFactory::getLoader()->getShared(
+            'EventEspresso\core\domain\values\session\SessionLifespan'
+        );
+        $timestamp = $session_lifespan->expiration();
+        $expired_ticket_line_items = EEM_Line_Item::instance()->getTicketLineItemsForExpiredCarts($timestamp);
+        if (self::debug) {
+            echo self::$nl . ' . time(): ' . time();
+            echo self::$nl . ' . time() as date: ' . date('Y-m-d H:i a');
+            echo self::$nl . ' . session expiration: ' . $session_lifespan->expiration();
+            echo self::$nl . ' . session expiration as date: ' . date('Y-m-d H:i a', $session_lifespan->expiration());
+            echo self::$nl . ' . timestamp: ' . $timestamp;
+            echo self::$nl . ' . $expired_ticket_line_items: ' . count($expired_ticket_line_items);
+        }
+        if (! empty($expired_ticket_line_items)) {
+            foreach ($expired_ticket_line_items as $expired_ticket_line_item) {
+                if (! $expired_ticket_line_item instanceof EE_Line_Item) {
                     continue;
                 }
-                if ($total_line_item->timestamp(true) <= $expired) {
-                    $expired_ticket_IDs[$ticket_line_item->OBJ_ID()] = $ticket_line_item->OBJ_ID();
-                } else {
-                    $valid_ticket_line_items[$ticket_line_item->OBJ_ID()] = $ticket_line_item;
+                $expired_ticket_IDs[ $expired_ticket_line_item->OBJ_ID() ] = $expired_ticket_line_item->OBJ_ID();
+                if (self::debug) {
+                    echo self::$nl . ' . $expired_ticket_line_item->OBJ_ID(): ' . $expired_ticket_line_item->OBJ_ID();
+                    echo self::$nl . ' . $expired_ticket_line_item->timestamp(): '
+                         . date(
+                             'Y-m-d h:i a',
+                             $expired_ticket_line_item->timestamp(true)
+                         );
                 }
             }
+            if (! empty($expired_ticket_IDs)) {
+                EED_Ticket_Sales_Monitor::release_reservations_for_tickets(
+                    \EEM_Ticket::instance()->get_tickets_with_IDs($expired_ticket_IDs),
+                    array(),
+                    __FUNCTION__
+                );
+                // now  let's get rid of expired line items so that they can't interfere with tracking
+                EED_Ticket_Sales_Monitor::clear_expired_line_items_with_no_transaction($timestamp);
+            }
         }
-        if (! empty($expired_ticket_IDs)) {
-            EED_Ticket_Sales_Monitor::release_reservations_for_tickets(
-                \EEM_Ticket::instance()->get_tickets_with_IDs($expired_ticket_IDs),
-                $valid_ticket_line_items
-            );
-            // let's get rid of expired line items so that they can't interfere with tracking
-            add_action(
-                'shutdown',
-                array('EED_Ticket_Sales_Monitor', 'clear_expired_line_items_with_no_transaction'),
-                999
-            );
-        }
+        do_action(
+            'AHEE__EED_Ticket_Sales_Monitor__release_tickets_for_expired_carts__end',
+            $expired_ticket_IDs,
+            $expired_ticket_line_items
+        );
     }
 
 
 
     /********************************** VALIDATE_TICKET_SALE  **********************************/
-
 
 
     /**
@@ -245,12 +253,11 @@ class EED_Ticket_Sales_Monitor extends EED_Module
             $qty = EED_Ticket_Sales_Monitor::instance()->_validate_ticket_sale($ticket, $qty);
         }
         if (self::debug) {
-            echo '<br /><br /> ' . __LINE__ . ') ' . __METHOD__ . '()';
-            echo '<br /><br /><b> RETURNED QTY: ' . $qty . '</b>';
+            echo self::$nl . self::$nl . __LINE__ . ') ' . __METHOD__ . '()';
+            echo self::$nl . self::$nl . '<b> RETURNED QTY: ' . $qty . '</b>';
         }
         return $qty;
     }
-
 
 
     /**
@@ -265,43 +272,45 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     protected function _validate_ticket_sale(EE_Ticket $ticket, $qty = 1)
     {
         if (self::debug) {
-            echo '<br /><br /> ' . __LINE__ . ') ' . __METHOD__ . '() ';
+            echo self::$nl . self::$nl . __LINE__ . ') ' . __METHOD__ . '() ';
         }
         if (! $ticket instanceof EE_Ticket) {
             return 0;
         }
         if (self::debug) {
-            echo '<br /><b> . ticket->ID: ' . $ticket->ID() . '</b>';
-            echo '<br /> . original ticket->reserved: ' . $ticket->reserved();
+            echo self::$nl . '<b> . ticket->ID: ' . $ticket->ID() . '</b>';
+            echo self::$nl . ' . original ticket->reserved: ' . $ticket->reserved();
         }
         $ticket->refresh_from_db();
         // first let's determine the ticket availability based on sales
         $available = $ticket->qty('saleable');
         if (self::debug) {
-            echo '<br /> . . . ticket->qty: ' . $ticket->qty();
-            echo '<br /> . . . ticket->sold: ' . $ticket->sold();
-            echo '<br /> . . . ticket->reserved: ' . $ticket->reserved();
-            echo '<br /> . . . ticket->qty(saleable): ' . $ticket->qty('saleable');
-            echo '<br /> . . . available: ' . $available;
+            echo self::$nl . ' . . . ticket->qty: ' . $ticket->qty();
+            echo self::$nl . ' . . . ticket->sold: ' . $ticket->sold();
+            echo self::$nl . ' . . . ticket->reserved: ' . $ticket->reserved();
+            echo self::$nl . ' . . . ticket->qty(saleable): ' . $ticket->qty('saleable');
+            echo self::$nl . ' . . . available: ' . $available;
         }
         if ($available < 1) {
             $this->_ticket_sold_out($ticket);
             return 0;
         }
         if (self::debug) {
-            echo '<br /> . . . qty: ' . $qty;
+            echo self::$nl . ' . . . qty: ' . $qty;
         }
         if ($available < $qty) {
             $qty = $available;
             if (self::debug) {
-                echo '<br /> . . . QTY ADJUSTED: ' . $qty;
+                echo self::$nl . ' . . . QTY ADJUSTED: ' . $qty;
             }
             $this->_ticket_quantity_decremented($ticket);
         }
-        $this->_reserve_ticket($ticket, $qty);
-        return $qty;
+        if ($this->_reserve_ticket($ticket, $qty)) {
+            return $qty;
+        } else {
+            return 0;
+        }
     }
-
 
 
     /**
@@ -309,18 +318,16 @@ class EED_Ticket_Sales_Monitor extends EED_Module
      *
      * @param    EE_Ticket $ticket
      * @param int          $quantity
-     * @return bool
+     * @return bool indicating success or failure
      * @throws EE_Error
      */
     protected function _reserve_ticket(EE_Ticket $ticket, $quantity = 1)
     {
         if (self::debug) {
-            echo '<br /><br /> . . . INCREASE RESERVED: ' . $quantity;
+            echo self::$nl . self::$nl . ' . . . INCREASE RESERVED: ' . $quantity;
         }
-        $ticket->increase_reserved($quantity);
-        return $ticket->save();
+        return $ticket->increaseReserved($quantity, 'TicketSalesMonitor:' . __LINE__);
     }
-
 
 
     /**
@@ -332,16 +339,15 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     protected function _release_reserved_ticket(EE_Ticket $ticket, $quantity = 1)
     {
         if (self::debug) {
-            echo '<br /> . . . ticket->ID: ' . $ticket->ID();
-            echo '<br /> . . . ticket->reserved: ' . $ticket->reserved();
+            echo self::$nl . ' . . . ticket->ID: ' . $ticket->ID();
+            echo self::$nl . ' . . . ticket->reserved before: ' . $ticket->reserved();
         }
-        $ticket->decrease_reserved($quantity);
+        $ticket->decreaseReserved($quantity, true, 'TicketSalesMonitor:' . __LINE__);
         if (self::debug) {
-            echo '<br /> . . . ticket->reserved: ' . $ticket->reserved();
+            echo self::$nl . ' . . . ticket->reserved after: ' . $ticket->reserved();
         }
         return $ticket->save() ? 1 : 0;
     }
-
 
 
     /**
@@ -355,12 +361,11 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     protected function _ticket_sold_out(EE_Ticket $ticket)
     {
         if (self::debug) {
-            echo '<br /><br /> ' . __LINE__ . ') ' . __METHOD__ . '() ';
-            echo '<br /> . . ticket->name: ' . $this->_get_ticket_and_event_name($ticket);
+            echo self::$nl . self::$nl . __LINE__ . ') ' . __METHOD__ . '() ';
+            echo self::$nl . ' . . ticket->name: ' . $this->_get_ticket_and_event_name($ticket);
         }
         $this->sold_out_tickets[] = $this->_get_ticket_and_event_name($ticket);
     }
-
 
 
     /**
@@ -374,12 +379,11 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     protected function _ticket_quantity_decremented(EE_Ticket $ticket)
     {
         if (self::debug) {
-            echo '<br /><br /> ' . __LINE__ . ') ' . __METHOD__ . '() ';
-            echo '<br /> . . ticket->name: ' . $this->_get_ticket_and_event_name($ticket);
+            echo self::$nl . self::$nl . __LINE__ . ') ' . __METHOD__ . '() ';
+            echo self::$nl . ' . . ticket->name: ' . $this->_get_ticket_and_event_name($ticket);
         }
         $this->decremented_tickets[] = $this->_get_ticket_and_event_name($ticket);
     }
-
 
 
     /**
@@ -410,7 +414,6 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     /********************************** EVENT CART  **********************************/
 
 
-
     /**
      * releases or reserves ticket(s) based on quantity passed
      *
@@ -419,13 +422,17 @@ class EED_Ticket_Sales_Monitor extends EED_Module
      * @return void
      * @throws EE_Error
      * @throws InvalidArgumentException
-     * @throws \EventEspresso\core\exceptions\InvalidDataTypeException
-     * @throws \EventEspresso\core\exceptions\InvalidInterfaceException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
      */
     public static function ticket_quantity_updated(EE_Line_Item $line_item, $quantity = 1)
     {
         $ticket = EEM_Ticket::instance()->get_one_by_ID(absint($line_item->OBJ_ID()));
         if ($ticket instanceof EE_Ticket) {
+            $ticket->add_extra_meta(
+                EE_Ticket::META_KEY_TICKET_RESERVATIONS,
+                __LINE__ . ') ' . __METHOD__ . '()'
+            );
             if ($quantity > 0) {
                 EED_Ticket_Sales_Monitor::instance()->_reserve_ticket($ticket, $quantity);
             } else {
@@ -433,7 +440,6 @@ class EED_Ticket_Sales_Monitor extends EED_Module
             }
         }
     }
-
 
 
     /**
@@ -446,6 +452,10 @@ class EED_Ticket_Sales_Monitor extends EED_Module
      */
     public static function ticket_removed_from_cart(EE_Ticket $ticket, $quantity = 1)
     {
+        $ticket->add_extra_meta(
+            EE_Ticket::META_KEY_TICKET_RESERVATIONS,
+            __LINE__ . ') ' . __METHOD__ . '()'
+        );
         EED_Ticket_Sales_Monitor::instance()->_release_reserved_ticket($ticket, $quantity);
     }
 
@@ -454,14 +464,13 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     /********************************** POST_NOTICES  **********************************/
 
 
-
     /**
      * @return void
      * @throws EE_Error
      * @throws InvalidArgumentException
      * @throws ReflectionException
-     * @throws \EventEspresso\core\exceptions\InvalidDataTypeException
-     * @throws \EventEspresso\core\exceptions\InvalidInterfaceException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
      */
     public static function post_notices()
     {
@@ -469,24 +478,23 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     }
 
 
-
     /**
      * @return void
      * @throws EE_Error
      * @throws InvalidArgumentException
      * @throws ReflectionException
-     * @throws \EventEspresso\core\exceptions\InvalidDataTypeException
-     * @throws \EventEspresso\core\exceptions\InvalidInterfaceException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
      */
     protected function _post_notices()
     {
         if (self::debug) {
-            echo '<br /><br /> ' . __LINE__ . ') ' . __METHOD__ . '() ';
+            echo self::$nl . self::$nl . __LINE__ . ') ' . __METHOD__ . '() ';
         }
-        $refresh_msg    = '';
+        $refresh_msg = '';
         $none_added_msg = '';
         if (defined('DOING_AJAX') && DOING_AJAX) {
-            $refresh_msg    = __(
+            $refresh_msg = __(
                 'Please refresh the page to view updated ticket quantities.',
                 'event_espresso'
             );
@@ -540,7 +548,6 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     /********************************** RELEASE_ALL_RESERVED_TICKETS_FOR_TRANSACTION  **********************************/
 
 
-
     /**
      * releases reserved tickets for all registrations of an EE_Transaction
      * by default, will NOT release tickets for finalized transactions
@@ -548,13 +555,14 @@ class EED_Ticket_Sales_Monitor extends EED_Module
      * @param    EE_Transaction $transaction
      * @return int
      * @throws EE_Error
-     * @throws \EventEspresso\core\exceptions\InvalidSessionDataException
+     * @throws InvalidSessionDataException
      */
     protected function _release_all_reserved_tickets_for_transaction(EE_Transaction $transaction)
     {
         if (self::debug) {
-            echo '<br /><br /> ' . __LINE__ . ') ' . __METHOD__ . '() ';
-            echo '<br /> . transaction->ID: ' . $transaction->ID();
+            echo self::$nl . self::$nl . __LINE__ . ') ' . __METHOD__ . '() ';
+            echo self::$nl . ' . transaction->ID: ' . $transaction->ID();
+            echo self::$nl . ' . TXN status_ID: ' . $transaction->status_ID();
         }
         // check if 'finalize_registration' step has been completed...
         $finalized = $transaction->reg_step_completed('finalize_registration');
@@ -572,38 +580,58 @@ class EED_Ticket_Sales_Monitor extends EED_Module
         // how many tickets were released
         $count = 0;
         if (self::debug) {
-            echo '<br /> . . . finalized: ' . $finalized;
+            echo self::$nl . ' . . . TXN finalized: ' . $finalized;
         }
         $release_tickets_with_TXN_status = array(
             EEM_Transaction::failed_status_code,
             EEM_Transaction::abandoned_status_code,
             EEM_Transaction::incomplete_status_code,
         );
-        // if the session is getting cleared BEFORE the TXN has been finalized
+        $events = array();
+        // if the session is getting cleared BEFORE the TXN has been finalized or the transaction is not completed
         if (! $finalized || in_array($transaction->status_ID(), $release_tickets_with_TXN_status, true)) {
-            // let's cancel any reserved tickets
+            // cancel any reserved tickets for registrations that were not approved
             $registrations = $transaction->registrations();
+            if (self::debug) {
+                echo self::$nl . ' . . . # registrations: ' . count($registrations);
+                $reg = reset($registrations);
+                $ticket = $reg->ticket();
+                if ($ticket instanceof EE_Ticket) {
+                    $ticket->add_extra_meta(
+                        EE_Ticket::META_KEY_TICKET_RESERVATIONS,
+                        __LINE__ . ') Release All Tickets TXN:' . $transaction->ID()
+                    );
+                }
+            }
             if (! empty($registrations)) {
                 foreach ($registrations as $registration) {
-                    if ($registration instanceof EE_Registration) {
-                        $count += $this->_release_reserved_ticket_for_registration($registration, $transaction);
+                    if ($registration instanceof EE_Registration
+                        && $this->_release_reserved_ticket_for_registration($registration, $transaction)
+                    ) {
+                        $count++;
+                        $events[ $registration->event_ID() ] = $registration->event();
                     }
                 }
+            }
+        }
+        if ($events !== array()) {
+            foreach ($events as $event) {
+                /** @var EE_Event $event */
+                $event->perform_sold_out_status_check();
             }
         }
         return $count;
     }
 
 
-
     /**
      * releases reserved tickets for an EE_Registration
      * by default, will NOT release tickets for APPROVED registrations
      *
-     * @param    EE_Registration $registration
-     * @param    EE_Transaction  $transaction
-     * @return    int
-     * @throws    EE_Error
+     * @param EE_Registration $registration
+     * @param EE_Transaction  $transaction
+     * @return int
+     * @throws EE_Error
      */
     protected function _release_reserved_ticket_for_registration(
         EE_Registration $registration,
@@ -611,13 +639,12 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     ) {
         $STS_ID = $transaction->status_ID();
         if (self::debug) {
-            echo '<br /><br /> ' . __LINE__ . ') ' . __METHOD__ . '() ';
-            echo '<br /> . . registration->ID: ' . $registration->ID();
-            echo '<br /> . . registration->status_ID: ' . $registration->status_ID();
-            echo '<br /> . . transaction->status_ID(): ' . $STS_ID;
+            echo self::$nl . self::$nl . __LINE__ . ') ' . __METHOD__ . '() ';
+            echo self::$nl . ' . . registration->ID: ' . $registration->ID();
+            echo self::$nl . ' . . registration->status_ID: ' . $registration->status_ID();
+            echo self::$nl . ' . . transaction->status_ID(): ' . $STS_ID;
         }
-        if (
-            // release Tickets for Failed Transactions and Abandoned Transactions
+        if (// release Tickets for Failed Transactions and Abandoned Transactions
             $STS_ID === EEM_Transaction::failed_status_code
             || $STS_ID === EEM_Transaction::abandoned_status_code
             || (
@@ -626,10 +653,14 @@ class EED_Ticket_Sales_Monitor extends EED_Module
                 && $registration->status_ID() !== EEM_Registration::status_id_approved
             )
         ) {
-            $ticket = $registration->ticket();
-            if ($ticket instanceof EE_Ticket) {
-                return $this->_release_reserved_ticket($ticket);
+            if (self::debug) {
+                echo self::$nl . self::$nl . ' . . RELEASE RESERVED TICKET';
+                $rsrvd = $registration->get_extra_meta(EE_Registration::HAS_RESERVED_TICKET_KEY, true);
+                echo self::$nl . ' . . . registration HAS_RESERVED_TICKET_KEY: ';
+                var_dump($rsrvd);
             }
+            $registration->release_reserved_ticket(true, 'TicketSalesMonitor:' . __LINE__);
+            return 1;
         }
         return 0;
     }
@@ -639,80 +670,95 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     /********************************** SESSION_CART_RESET  **********************************/
 
 
-
     /**
      * callback hooked into 'AHEE__EE_Session__reset_cart__before_reset'
      *
-     * @param    EE_Session $session
+     * @param EE_Session $session
      * @return void
      * @throws EE_Error
      * @throws InvalidArgumentException
      * @throws ReflectionException
-     * @throws \EventEspresso\core\exceptions\InvalidDataTypeException
-     * @throws \EventEspresso\core\exceptions\InvalidInterfaceException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
      */
     public static function session_cart_reset(EE_Session $session)
     {
+        // don't release tickets if checkout was already reset
+        if (did_action('AHEE__EE_Session__reset_checkout__before_reset')) {
+            return;
+        }
         if (self::debug) {
-            echo '<br /><br /> ' . __LINE__ . ') ' . __METHOD__ . '() ';
+            echo self::$nl . self::$nl . __LINE__ . ') ' . __METHOD__ . '() ';
+        }
+        // first check of the session has a valid Checkout object
+        $checkout = $session->checkout();
+        if ($checkout instanceof EE_Checkout) {
+            // and use that to clear ticket reservations because it will update the associated registration meta data
+            EED_Ticket_Sales_Monitor::instance()->_session_checkout_reset($checkout);
+            return;
         }
         $cart = $session->cart();
         if ($cart instanceof EE_Cart) {
             if (self::debug) {
-                echo '<br /><br /> cart instance of EE_Cart: ';
+                echo self::$nl . self::$nl . ' cart instance of EE_Cart: ';
             }
-            EED_Ticket_Sales_Monitor::instance()->_session_cart_reset($cart);
+            EED_Ticket_Sales_Monitor::instance()->_session_cart_reset($cart, $session);
         } else {
             if (self::debug) {
-                echo '<br /><br /> invalid EE_Cart: ';
+                echo self::$nl . self::$nl . ' invalid EE_Cart: ';
                 var_export($cart, true);
             }
         }
     }
 
 
-
     /**
      * releases reserved tickets in the EE_Cart
      *
-     * @param    EE_Cart $cart
+     * @param EE_Cart $cart
      * @return void
      * @throws EE_Error
      * @throws InvalidArgumentException
      * @throws ReflectionException
-     * @throws \EventEspresso\core\exceptions\InvalidDataTypeException
-     * @throws \EventEspresso\core\exceptions\InvalidInterfaceException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
      */
-    protected function _session_cart_reset(EE_Cart $cart)
+    protected function _session_cart_reset(EE_Cart $cart, EE_Session $session)
     {
         if (self::debug) {
-            echo '<br /><br /> ' . __LINE__ . ') ' . __METHOD__ . '() ';
+            echo self::$nl . self::$nl . __LINE__ . ') ' . __METHOD__ . '() ';
         }
-        EE_Registry::instance()->load_helper('Line_Item');
         $ticket_line_items = $cart->get_tickets();
         if (empty($ticket_line_items)) {
             return;
         }
+        if (self::debug) {
+            echo '<br /> . ticket_line_item count: ' . count($ticket_line_items);
+        }
         foreach ($ticket_line_items as $ticket_line_item) {
             if (self::debug) {
-                echo '<br /> . ticket_line_item->ID(): ' . $ticket_line_item->ID();
+                echo self::$nl . ' . ticket_line_item->ID(): ' . $ticket_line_item->ID();
             }
             if ($ticket_line_item instanceof EE_Line_Item && $ticket_line_item->OBJ_type() === 'Ticket') {
                 if (self::debug) {
-                    echo '<br /> . . ticket_line_item->OBJ_ID(): ' . $ticket_line_item->OBJ_ID();
+                    echo self::$nl . ' . . ticket_line_item->OBJ_ID(): ' . $ticket_line_item->OBJ_ID();
                 }
                 $ticket = EEM_Ticket::instance()->get_one_by_ID($ticket_line_item->OBJ_ID());
                 if ($ticket instanceof EE_Ticket) {
                     if (self::debug) {
-                        echo '<br /> . . ticket->ID(): ' . $ticket->ID();
-                        echo '<br /> . . ticket_line_item->quantity(): ' . $ticket_line_item->quantity();
+                        echo self::$nl . ' . . ticket->ID(): ' . $ticket->ID();
+                        echo self::$nl . ' . . ticket_line_item->quantity(): ' . $ticket_line_item->quantity();
                     }
+                    $ticket->add_extra_meta(
+                        EE_Ticket::META_KEY_TICKET_RESERVATIONS,
+                        __LINE__ . ') ' . __METHOD__ . '() SID = ' . $session->id()
+                    );
                     $this->_release_reserved_ticket($ticket, $ticket_line_item->quantity());
                 }
             }
         }
         if (self::debug) {
-            echo '<br /><br /> RESET COMPLETED ';
+            echo self::$nl . self::$nl . ' RESET COMPLETED ';
         }
     }
 
@@ -721,17 +767,20 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     /********************************** SESSION_CHECKOUT_RESET  **********************************/
 
 
-
     /**
      * callback hooked into 'AHEE__EE_Session__reset_checkout__before_reset'
      *
-     * @param    EE_Session $session
+     * @param EE_Session $session
      * @return void
      * @throws EE_Error
-     * @throws \EventEspresso\core\exceptions\InvalidSessionDataException
+     * @throws InvalidSessionDataException
      */
     public static function session_checkout_reset(EE_Session $session)
     {
+        // don't release tickets if cart was already reset
+        if (did_action('AHEE__EE_Session__reset_cart__before_reset')) {
+            return;
+        }
         $checkout = $session->checkout();
         if ($checkout instanceof EE_Checkout) {
             EED_Ticket_Sales_Monitor::instance()->_session_checkout_reset($checkout);
@@ -739,19 +788,18 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     }
 
 
-
     /**
      * releases reserved tickets for the EE_Checkout->transaction
      *
-     * @param    EE_Checkout $checkout
+     * @param EE_Checkout $checkout
      * @return void
      * @throws EE_Error
-     * @throws \EventEspresso\core\exceptions\InvalidSessionDataException
+     * @throws InvalidSessionDataException
      */
     protected function _session_checkout_reset(EE_Checkout $checkout)
     {
         if (self::debug) {
-            echo '<br /><br /> ' . __LINE__ . ') ' . __METHOD__ . '() ';
+            echo self::$nl . self::$nl . __LINE__ . ') ' . __METHOD__ . '() ';
         }
         // we want to release the each registration's reserved tickets if the session was cleared, but not if this is a revisit
         if ($checkout->revisit || ! $checkout->transaction instanceof EE_Transaction) {
@@ -763,7 +811,6 @@ class EED_Ticket_Sales_Monitor extends EED_Module
 
 
     /********************************** SESSION_EXPIRED_RESET  **********************************/
-
 
 
     /**
@@ -779,15 +826,14 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     /********************************** PROCESS_ABANDONED_TRANSACTIONS  **********************************/
 
 
-
     /**
      * releases reserved tickets for all registrations of an ABANDONED EE_Transaction
      * by default, will NOT release tickets for free transactions, or any that have received a payment
      *
-     * @param    EE_Transaction $transaction
+     * @param EE_Transaction $transaction
      * @return void
      * @throws EE_Error
-     * @throws \EventEspresso\core\exceptions\InvalidSessionDataException
+     * @throws InvalidSessionDataException
      */
     public static function process_abandoned_transactions(EE_Transaction $transaction)
     {
@@ -833,14 +879,13 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     /********************************** PROCESS_FAILED_TRANSACTIONS  **********************************/
 
 
-
     /**
      * releases reserved tickets for absolutely ALL registrations of a FAILED EE_Transaction
      *
-     * @param    EE_Transaction $transaction
+     * @param EE_Transaction $transaction
      * @return void
      * @throws EE_Error
-     * @throws \EventEspresso\core\exceptions\InvalidSessionDataException
+     * @throws InvalidSessionDataException
      */
     public static function process_failed_transactions(EE_Transaction $transaction)
     {
@@ -851,28 +896,35 @@ class EED_Ticket_Sales_Monitor extends EED_Module
 
 
     /********************************** RESET RESERVATION COUNTS  *********************************/
+
+
     /**
-     * Resets all ticket and datetime reserved counts to zero
-     * Tickets that are currently associated with a Transaction that is in progress
+     * Resets the ticket and datetime reserved counts.
      *
-     * @throws \EE_Error
-     * @throws \DomainException
-     * @throws \EventEspresso\core\exceptions\InvalidDataTypeException
-     * @throws \EventEspresso\core\exceptions\InvalidInterfaceException
-     * @throws \InvalidArgumentException
+     * For all the tickets with reservations, recalculates what their actual reserved counts should be based
+     * on the valid transactions.
+     *
+     * @return int number of tickets whose reservations were released.
+     * @throws EE_Error
+     * @throws DomainException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws InvalidArgumentException
+     * @throws UnexpectedEntityException
+     * @throws ReflectionException
      */
     public static function reset_reservation_counts()
     {
         /** @var EE_Line_Item[] $valid_reserved_tickets */
-        $valid_reserved_tickets   = array();
+        $valid_reserved_tickets = array();
+        /** @var EE_Transaction[] $transactions_in_progress */
         $transactions_in_progress = EEM_Transaction::instance()->get_transactions_in_progress();
-        foreach ($transactions_in_progress as $transaction_in_progress) {
+        foreach ($transactions_in_progress as $transaction) {
             // if this TXN has been fully completed, then skip it
-            if ($transaction_in_progress->reg_step_completed('finalize_registration')) {
+            if ($transaction->reg_step_completed('finalize_registration')) {
                 continue;
             }
-            /** @var EE_Transaction $transaction_in_progress */
-            $total_line_item = $transaction_in_progress->total_line_item();
+            $total_line_item = $transaction->total_line_item();
             // $transaction_in_progress->line
             if (! $total_line_item instanceof EE_Line_Item) {
                 throw new DomainException(
@@ -892,12 +944,13 @@ class EED_Ticket_Sales_Monitor extends EED_Module
                 $total_line_item
             );
         }
+        $tickets_with_reservations = EEM_Ticket::instance()->get_tickets_with_reservations();
         return EED_Ticket_Sales_Monitor::release_reservations_for_tickets(
-            EEM_Ticket::instance()->get_tickets_with_reservations(),
-            $valid_reserved_tickets
+            $tickets_with_reservations,
+            $valid_reserved_tickets,
+            __FUNCTION__
         );
     }
-
 
 
     /**
@@ -908,45 +961,79 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     {
         /** @var EE_Line_Item[] $valid_reserved_tickets */
         $valid_reserved_tickets = array();
-        $ticket_line_items      = EEH_Line_Item::get_ticket_line_items($total_line_item);
+        $ticket_line_items = EEH_Line_Item::get_ticket_line_items($total_line_item);
         foreach ($ticket_line_items as $ticket_line_item) {
             if ($ticket_line_item instanceof EE_Line_Item) {
-                $valid_reserved_tickets[] = $ticket_line_item;
+                $valid_reserved_tickets[ $ticket_line_item->ID() ] = $ticket_line_item;
             }
         }
         return $valid_reserved_tickets;
     }
 
 
-
     /**
-     * @param EE_Ticket[]    $tickets_with_reservations
-     * @param EE_Line_Item[] $valid_reserved_ticket_line_items
+     * Releases ticket and datetime reservations (ie, reduces the number of reserved spots on them).
+     *
+     * Given the list of tickets which have reserved spots on them, uses the complete list of line items for tickets
+     * whose transactions aren't complete and also aren't yet expired (ie, they're incomplete and younger than the
+     * session's expiry time) to update the ticket (and their datetimes') reserved counts.
+     *
+     * @param EE_Ticket[]    $tickets_with_reservations all tickets with TKT_reserved > 0
+     * @param EE_Line_Item[] $valid_reserved_ticket_line_items all line items for tickets and incomplete transactions
+     *                       whose session has NOT expired. We will use these to determine the number of ticket
+     *                       reservations are now invalid. We don't use the list of invalid ticket line items because
+     *                       we don't know which of those have already been taken into account when reducing ticket
+     *                       reservation counts, and which haven't.
      * @return int
-     * @throws \EE_Error
+     * @throws UnexpectedEntityException
+     * @throws DomainException
+     * @throws EE_Error
      */
-    private static function release_reservations_for_tickets(
+    protected static function release_reservations_for_tickets(
         array $tickets_with_reservations,
-        $valid_reserved_ticket_line_items = array()
+        array $valid_reserved_ticket_line_items = array(),
+        $source
     ) {
         $total_tickets_released = 0;
+        $sold_out_events = array();
         foreach ($tickets_with_reservations as $ticket_with_reservations) {
             if (! $ticket_with_reservations instanceof EE_Ticket) {
                 continue;
             }
-            $reserved_qty = $ticket_with_reservations->reserved();
+            // The $valid_reserved_ticket_line_items tells us what the reserved count on their tickets (and datetimes)
+            // SHOULD be. Instead of just directly updating the list, we're going to use EE_Ticket::decreaseReserved()
+            // to try to avoid race conditions, so instead of just finding the number to update TO, we're going to find
+            // the number to RELEASE. It's the same end result, just different path.
+            // Begin by assuming we're going to release all the reservations on this ticket.
+            $expired_reservations_count = $ticket_with_reservations->reserved();
+            // Now reduce that number using the list of current valid reservations.
             foreach ($valid_reserved_ticket_line_items as $valid_reserved_ticket_line_item) {
-                if (
-                    $valid_reserved_ticket_line_item instanceof EE_Line_Item
+                if ($valid_reserved_ticket_line_item instanceof EE_Line_Item
                     && $valid_reserved_ticket_line_item->OBJ_ID() === $ticket_with_reservations->ID()
                 ) {
-                    $reserved_qty -= $valid_reserved_ticket_line_item->quantity();
+                    $expired_reservations_count -= $valid_reserved_ticket_line_item->quantity();
                 }
             }
-            if ($reserved_qty > 0) {
-                $ticket_with_reservations->decrease_reserved($reserved_qty);
-                $ticket_with_reservations->save();
-                $total_tickets_released += $reserved_qty;
+            // Only bother saving the tickets and datetimes if we're actually going to release some spots.
+            if ($expired_reservations_count > 0) {
+                $ticket_with_reservations->add_extra_meta(
+                    EE_Ticket::META_KEY_TICKET_RESERVATIONS,
+                    __LINE__ . ') ' . $source . '()'
+                );
+                $ticket_with_reservations->decreaseReserved($expired_reservations_count, true, 'TicketSalesMonitor:' . __LINE__);
+                $total_tickets_released += $expired_reservations_count;
+                $event = $ticket_with_reservations->get_related_event();
+                // track sold out events
+                if ($event instanceof EE_Event && $event->is_sold_out()) {
+                    $sold_out_events[] = $event;
+                }
+            }
+        }
+        // Double check whether sold out events should remain sold out after releasing tickets
+        if ($sold_out_events !== array()) {
+            foreach ($sold_out_events as $sold_out_event) {
+                /** @var EE_Event $sold_out_event */
+                $sold_out_event->perform_sold_out_status_check();
             }
         }
         return $total_tickets_released;
@@ -957,28 +1044,32 @@ class EED_Ticket_Sales_Monitor extends EED_Module
     /********************************** SHUTDOWN  **********************************/
 
 
-
     /**
+     * @param int $timestamp
      * @return false|int
      * @throws EE_Error
      * @throws InvalidArgumentException
-     * @throws \EventEspresso\core\exceptions\InvalidDataTypeException
-     * @throws \EventEspresso\core\exceptions\InvalidInterfaceException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
      */
-    public static function clear_expired_line_items_with_no_transaction()
+    public static function clear_expired_line_items_with_no_transaction($timestamp = 0)
     {
         /** @type WPDB $wpdb */
         global $wpdb;
+        if (! absint($timestamp)) {
+            /** @var EventEspresso\core\domain\values\session\SessionLifespan $session_lifespan */
+            $session_lifespan = LoaderFactory::getLoader()->getShared(
+                'EventEspresso\core\domain\values\session\SessionLifespan'
+            );
+            $timestamp = $session_lifespan->expiration();
+        }
         return $wpdb->query(
             $wpdb->prepare(
                 'DELETE FROM ' . EEM_Line_Item::instance()->table() . '
                 WHERE TXN_ID = 0 AND LIN_timestamp <= %s',
                 // use GMT time because that's what LIN_timestamps are in
-                date('Y-m-d H:i:s', time() - EE_Registry::instance()->SSN->lifespan())
+                date('Y-m-d H:i:s', $timestamp)
             )
         );
     }
-
 }
-// End of file EED_Ticket_Sales_Monitor.module.php
-// Location: /modules/ticket_sales_monitor/EED_Ticket_Sales_Monitor.module.php

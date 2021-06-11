@@ -1,5 +1,8 @@
 <?php
 
+use EventEspresso\core\exceptions\InvalidDataTypeException;
+use EventEspresso\core\exceptions\InvalidInterfaceException;
+
 defined('EVENT_ESPRESSO_VERSION') || exit('No direct script access allowed');
 
 /**
@@ -482,7 +485,308 @@ class EE_Event_Test extends EE_UnitTestCase
     }
 
 
+    /**
+     * @group sold_out_status_check
+     * @throws DomainException
+     * @throws EE_Error
+     * @throws \EventEspresso\core\exceptions\UnexpectedEntityException
+     */
+    public function test_perform_sold_out_status_check()
+    {
+        $this->markTestSkipped('Temporarily skipped because of sporadic, unexplained fails. See https://events.codebasehq.com/projects/event-espresso/tickets/11394');
+        $event = EE_Event::new_instance(
+            array(
+                'status' => 'publish'
+            )
+        );
+        $event->save();
+        $datetime = EE_Datetime::new_instance(
+            array(
+                'EVT_ID'        => $event->ID(),
+                'DTT_EVT_start' => time() + WEEK_IN_SECONDS,
+                'DTT_EVT_end'   => time() + WEEK_IN_SECONDS + DAY_IN_SECONDS,
+                'DTT_reg_limit' => 4,
+                'DTT_sold'      => 2,
+            )
+        );
+        $datetime->save();
+        $ticket_A = EE_Ticket::new_instance(
+            array(
+                'TKT_name' => 'Ticket A',
+                'TKT_qty'  => 4,
+                'TKT_sold' => 2,
+            )
+        );
+        $ticket_A->save();
+        $ticket_A->_add_relation_to($datetime, 'Datetime');
+        $this->assertEquals('publish', $event->status());
+        $this->assertEquals(EE_Datetime::upcoming, $event->get_active_status());
+        $ticket_A->increaseSold(2);
+        $this->assertEquals('publish', $event->status());
+        $this->assertEquals(EE_Datetime::upcoming, $event->get_active_status(true));
+        // now perform sold  out check
+        $sold_out = $event->perform_sold_out_status_check();
+        $this->assertTrue($sold_out);
+        $this->assertEquals(EEM_Event::sold_out, $event->status());
+        $this->assertEquals(EE_Datetime::sold_out, $event->get_active_status(true));
+    }
 
+
+    /**
+     * @group sold_out_status_check
+     * @throws DomainException
+     * @throws EE_Error
+     * @throws \EventEspresso\core\exceptions\UnexpectedEntityException
+     */
+    public function test_perform_sold_out_status_check_with_expired_ticket()
+    {
+        $event = EE_Event::new_instance(
+            array(
+                'status' => 'publish'
+            )
+        );
+        $event->save();
+        $datetime = EE_Datetime::new_instance(
+            array(
+                'EVT_ID'        => $event->ID(),
+                'DTT_EVT_start' => time() + WEEK_IN_SECONDS,
+                'DTT_EVT_end'   => time() + WEEK_IN_SECONDS + DAY_IN_SECONDS,
+                'DTT_reg_limit' => 4,
+                'DTT_sold'      => 2,
+            )
+        );
+        $datetime->save();
+        // expired early bird ticket
+        $ticket_A = EE_Ticket::new_instance(
+            array(
+                'TKT_name'       => 'Ticket A',
+                'TKT_start_date' => time() - MONTH_IN_SECONDS,
+                'TKT_end_date'   => time() - WEEK_IN_SECONDS,
+                'TKT_qty'        => 4,
+                'TKT_sold'       => 2,
+            )
+        );
+        $ticket_A->save();
+        $ticket_A->_add_relation_to($datetime, 'Datetime');
+        // regular on sale ticket
+        $ticket_B = EE_Ticket::new_instance(
+            array(
+                'TKT_name'       => 'Ticket B',
+                'TKT_start_date' => time() - WEEK_IN_SECONDS,
+                'TKT_end_date'   => time() + WEEK_IN_SECONDS,
+                'TKT_qty'        => 4,
+                'TKT_sold'       => 0,
+            )
+        );
+        $ticket_B->save();
+        $ticket_B->_add_relation_to($datetime, 'Datetime');
+        $this->assertEquals('publish', $event->status());
+        $this->assertEquals(EE_Datetime::upcoming, $event->get_active_status());
+        $ticket_B->increaseSold(2);
+        $this->assertEquals('publish', $event->status());
+        $this->assertEquals(EE_Datetime::upcoming, $event->get_active_status(true));
+        // now perform sold  out check
+        $sold_out = $event->perform_sold_out_status_check();
+        $this->assertTrue($sold_out);
+        $this->assertEquals(EEM_Event::sold_out, $event->status());
+        $this->assertEquals(EE_Datetime::sold_out, $event->get_active_status(true));
+    }
+
+    /**
+     * @since 4.10.0.p
+     * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws ReflectionException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     */
+    public function testAddQuestionGroupPrimary()
+    {
+        $e = $this->new_model_obj_with_dependencies('Event');
+        $this->assertEquals(
+            0,
+            EEM_Event_Question_Group::instance()->count(
+                [
+                    [
+                        'EVT_ID' => $e->ID(),
+                        'QSG_ID' => 1,
+                        'EQG_primary' => true
+                    ]
+                ]
+            )
+        );
+        $e->add_question_group(1, true);
+        $this->assertEquals(
+            1,
+            EEM_Event_Question_Group::instance()->count(
+                [
+                    [
+                        'EVT_ID' => $e->ID(),
+                        'QSG_ID' => 1,
+                        'EQG_primary' => true
+                    ]
+                ]
+            )
+        );
+    }
+
+    /**
+     * @since 4.10.0.p
+     * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
+     */
+    public function testAddQuestionGroupAdditional()
+    {
+        $e = $this->new_model_obj_with_dependencies('Event');
+        $this->assertEquals(
+            0,
+            EEM_Event_Question_Group::instance()->count(
+                [
+                    [
+                        'EVT_ID' => $e->ID(),
+                        'QSG_ID' => 1,
+                        'EQG_additional' => true
+                    ]
+                ]
+            )
+        );
+        $e->add_question_group(1, false);
+        $this->assertEquals(
+            1,
+            EEM_Event_Question_Group::instance()->count(
+                [
+                    [
+                        'EVT_ID' => $e->ID(),
+                        'QSG_ID' => 1,
+                        'EQG_additional' => true
+                    ]
+                ]
+            )
+        );
+    }
+
+    /**
+     * @since 4.10.0.p
+     * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
+     */
+    public function testRemoveQuestionGroupPrimary()
+    {
+        $e = $this->new_model_obj_with_dependencies('Event');
+        $e->add_question_group(1, true);
+        $this->assertEquals(
+            1,
+            EEM_Event_Question_Group::instance()->count(
+                [
+                    [
+                        'EVT_ID' => $e->ID(),
+                        'QSG_ID' => 1,
+                        'EQG_primary' => true
+                    ]
+                ]
+            )
+        );
+        $e->remove_question_group(1, true);
+        $this->assertEquals(
+            0,
+            EEM_Event_Question_Group::instance()->count(
+                [
+                    [
+                        'EVT_ID' => $e->ID(),
+                        'QSG_ID' => 1,
+                        'EQG_primary' => true
+                    ]
+                ]
+            )
+        );
+    }
+
+    /**
+     * @since 4.10.0.p
+     * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
+     */
+    public function testRemoveQuestionGroupAdditional()
+    {
+        $e = $this->new_model_obj_with_dependencies('Event');
+        $e->add_question_group(1, false);
+        $this->assertEquals(
+            1,
+            EEM_Event_Question_Group::instance()->count(
+                [
+                    [
+                        'EVT_ID' => $e->ID(),
+                        'QSG_ID' => 1,
+                        'EQG_additional' => true
+                    ]
+                ]
+            )
+        );
+        $e->remove_question_group(1, false);
+        $this->assertEquals(
+            0,
+            EEM_Event_Question_Group::instance()->count(
+                [
+                    [
+                        'EVT_ID' => $e->ID(),
+                        'QSG_ID' => 1,
+                        'EQG_additional' => true
+                    ]
+                ]
+            )
+        );
+    }
+
+    /**
+     * @since 4.10.0.p
+     * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
+     */
+    public function testRemoveQuestionGroupAdditionalStillPrimary()
+    {
+        $e = $this->new_model_obj_with_dependencies('Event');
+        $e->add_question_group(1, true);
+        $e->add_question_group(1, false);
+        $this->assertEquals(
+            1,
+            EEM_Event_Question_Group::instance()->count(
+                [
+                    [
+                        'EVT_ID' => $e->ID(),
+                        'QSG_ID' => 1,
+                        'EQG_primary' => true,
+                        'EQG_additional' => true
+                    ]
+                ]
+            )
+        );
+        $e->remove_question_group(1, false);
+        $this->assertEquals(
+            1,
+            EEM_Event_Question_Group::instance()->count(
+                [
+                    [
+                        'EVT_ID' => $e->ID(),
+                        'QSG_ID' => 1,
+                        'EQG_primary' => true,
+                        'EQG_additional' => false
+                    ]
+                ]
+            )
+        );
+    }
 }
 // End of file EE_Event_Test.php
 // Location: /tests/testcases/core/db_classes/EE_Event_Test.php

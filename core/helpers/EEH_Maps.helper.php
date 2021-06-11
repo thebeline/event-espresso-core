@@ -1,7 +1,5 @@
 <?php
 
-defined('EVENT_ESPRESSO_VERSION') || exit('No direct access allowed.');
-
 /**
  * EEH_Maps
  * This is a helper utility class that provides different helpers related to mapping and displaying location related
@@ -70,9 +68,8 @@ class EEH_Maps
             $html .= '<a href="' . $static_url . '">View Large map</a>';
             $html .= '</div>';
             return $html;
-
         } else {
-            EEH_Maps::$gmap_vars[$ee_gmaps_opts['map_ID']] = array(
+            EEH_Maps::$gmap_vars[ $ee_gmaps_opts['map_ID'] ] = array(
                 'map_ID'              => $ee_gmaps_opts['map_ID'],
                 'ee_map_zoom'         => $ee_map_zoom,
                 'ee_map_nav_display'  => $ee_map_nav_display,
@@ -161,7 +158,7 @@ class EEH_Maps
         switch ($type) {
             case 'text':
             default:
-                $text = $text == '' ? __('Map and Directions', 'event_espresso') : $text;
+                $text = $text == '' ? esc_html__('Map and Directions', 'event_espresso') : $text;
                 break;
 
             case 'url_only':
@@ -177,13 +174,11 @@ class EEH_Maps
                     EE_Registry::instance()->CFG->map_settings->google_map_api_key
                 );
 
-                return '<a class="a_map_image_link" href="' . $google_map . '" target="_blank">' . '<img class="map_image_link" id="venue_map_' . $id . '" ' . $map_image_class . ' src="' . htmlentities2($scheme . 'maps.googleapis.com/maps/api/staticmap?center=' . urlencode($address_string) . '&amp;zoom=14&amp;size=' . $map_w . 'x' . $map_h . '&amp;markers=color:green|label:|' . urlencode($address_string) . '&amp;sensor=false&amp;key=' . $api_key) . '" /></a>';
+                return '<a class="a_map_image_link" href="' . $google_map . '" target="_blank" rel="noopener noreferrer">' . '<img class="map_image_link" id="venue_map_' . $id . '" ' . $map_image_class . ' src="' . htmlentities2($scheme . 'maps.googleapis.com/maps/api/staticmap?center=' . urlencode($address_string) . '&amp;zoom=14&amp;size=' . $map_w . 'x' . $map_h . '&amp;markers=color:green|label:|' . urlencode($address_string) . '&amp;sensor=false&amp;key=' . $api_key) . '" /></a>';
         }
 
         return $type === 'url_only'
             ? $text
-            : '<a href="' . $google_map . '" target="_blank">' . $text . '</a>';
+            : '<a href="' . $google_map . '" target="_blank" rel="noopener noreferrer">' . $text . '</a>';
     }
 }
-// End of file EEH_Maps.helper.php
-// Location: /helpers/EEH_Maps.helper.php

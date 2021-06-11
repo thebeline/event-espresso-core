@@ -1,4 +1,5 @@
 <?php
+
 namespace EventEspresso\core\services\commands\transaction;
 
 use EE_Checkout;
@@ -6,13 +7,14 @@ use EE_Error;
 use EE_Line_Item;
 use EE_Transaction;
 use EEH_Line_Item;
+use EventEspresso\core\exceptions\InvalidDataTypeException;
 use EventEspresso\core\exceptions\InvalidEntityException;
+use EventEspresso\core\exceptions\InvalidInterfaceException;
 use EventEspresso\core\services\commands\CommandHandler;
 use EventEspresso\core\services\commands\CommandInterface;
-
-defined('EVENT_ESPRESSO_VERSION') || exit;
-
-
+use InvalidArgumentException;
+use ReflectionException;
+use RuntimeException;
 
 /**
  * Class CreateTransactionCommandHandler
@@ -20,24 +22,23 @@ defined('EVENT_ESPRESSO_VERSION') || exit;
  *
  * @package       Event Espresso
  * @author        Brent Christensen
- * @since         $VID:$
  */
 class CreateTransactionCommandHandler extends CommandHandler
 {
 
-
     /**
-     * @param CommandInterface $command
+     * @param CommandInterface|CreateTransactionCommand $command
      * @return mixed
      * @throws EE_Error
      * @throws InvalidEntityException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws InvalidArgumentException
+     * @throws ReflectionException
+     * @throws RuntimeException
      */
     public function handle(CommandInterface $command)
     {
-        /** @var CreateTransactionCommand $command */
-        if (! $command instanceof CreateTransactionCommand) {
-            throw new InvalidEntityException(get_class($command), 'CreateTransactionCommand');
-        }
         $transaction_details = $command->transactionDetails();
         $cart_total = null;
         if ($command->checkout() instanceof EE_Checkout) {
@@ -64,8 +65,4 @@ class CreateTransactionCommandHandler extends CommandHandler
         $cart_total->save_this_and_descendants_to_txn($transaction->ID());
         return $transaction;
     }
-
-
 }
-// End of file CreateTransactionCommandHandler.php
-// Location: EventEspresso\core\services\commands\transaction/CreateTransactionCommandHandler.php

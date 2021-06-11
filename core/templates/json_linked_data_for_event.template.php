@@ -5,6 +5,8 @@ defined('EVENT_ESPRESSO_VERSION') || exit;
 /** @var string $event_description */
 /** @var string $event_start */
 /** @var string $event_end */
+/** @var string $event_attendance_mode */
+/** @var string $event_status */
 /** @var string $currency */
 /** @var array $event_tickets */
 /** @var string $venue_name */
@@ -22,8 +24,12 @@ defined('EVENT_ESPRESSO_VERSION') || exit;
   "endDate": "<?php echo $event_end; ?>",
   "description": <?php echo wp_json_encode($event_description); ?>,
   "url": "<?php echo $event_permalink; ?>",
+  "eventAttendanceMode": "https://schema.org/<?php echo $event_attendance_mode; ?>",
+  "eventStatus": [ <?php echo $event_status; ?> ],
   "offers": [
-  <?php foreach ($event_tickets as $ticket) { ?>
+    <?php
+    $i = 0;
+    foreach ($event_tickets as $ticket) {?>
     {
       "@type": "Offer",
       "url": "<?php echo $event_permalink; ?>",
@@ -31,10 +37,19 @@ defined('EVENT_ESPRESSO_VERSION') || exit;
       "validThrough": "<?php echo $ticket['end_date']; ?>",
       "price": "<?php echo $ticket['price']; ?>",
       "priceCurrency": "<?php echo $currency; ?>"
-    }<?php if (is_array($event_tickets) && end($event_tickets) !== $ticket) { echo ','; }
+        <?php if (isset($ticket['availability'])) {
+            ?>,"availability": "http://schema.org/<?php echo $ticket['availability']; ?>"
+        <?php } ?>
+    }<?php
+    $i++;
+    if ($i < count($event_tickets)) {
+        echo ',';
+    }
     }
     ?>
-    ]<?php if ($venue_name) { ?>,
+    ]<?php
+    if ($venue_name) {
+        ?>,
   "location": {
     "@type": "Place",
     "name": <?php echo wp_json_encode($venue_name); ?>,
@@ -42,13 +57,19 @@ defined('EVENT_ESPRESSO_VERSION') || exit;
     "address": {
       "@type": "PostalAddress",
       "addressLocality": <?php echo wp_json_encode($venue_locality); ?>,
-      "addressRegion": <?php echo wp_json_encode($venue_region); ?>
+      "addressRegion": <?php echo wp_json_encode($venue_region); ?>,
+      "streetAddress": <?php echo wp_json_encode($venue_address); ?>
     }
   }
-  <?php } ?>
-  <?php if ($event_image) { ?>,
+    <?php
+    } ?>
+    <?php
+    if ($event_image) {
+        ?>,
   "image": "<?php echo $event_image; ?>"
-  <?php } ?>
-  <?php do_action('AHEE__json_linked_data_for_event__template'); ?>
+    <?php
+    } ?>
+    <?php do_action('AHEE__json_linked_data_for_event__template'); ?>
 }
+
 </script>

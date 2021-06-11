@@ -2,14 +2,15 @@
 
 Previously, our php coding standards closely mirrored the [WordPress PHP Coding Standards](http://make.wordpress.org/core/handbook/coding-standards/php/).  We won't repeat all those here but emphasis, modifications, and additions are listed below. There is still some really old code in Event Espresso 4 that does not conform to these standards.
 
-We have recently decided however to deviate from the above to follow coding standards, methodologies, and guidelines that comply with the greater PHP community. This means following [PHP Standards Recommendations](http://www.php-fig.org/psr/) and pursuing [modern day best practices](http://www.phptherightway.com/)
+We have recently decided however to deviate from the above to follow coding standards, methodologies, and guidelines that comply with the greater PHP community. This means following [PHP Standards Recommendations](http://www.php-fig.org/psr/) and pursuing [modern day best practices](http://www.phptherightway.com/). We recommend using [the PHP Code Sniffer](https://github.com/squizlabs/PHP_CodeSniffer) during development.
 
-All code following the previous WordPress methodologies is now considered legacy code and will continue to follow those particular guidelines until it is replaced. All new classes and files will follow modern day best practices, including namespacing and PSR compliance.
+
+All new classes and files will follow modern day best practices, including namespacing and PSR compliance. New methods, class properties, and class constants will follow the new standards UNLESS legacy coding styles (e.g. naming) are required in order to function or maintain backward compatibility.
 
 
 ## General Code Guidelines
 
- * Event Espresso supports PHP 5.3+ and WordPress 4.1+ so all functions and code used should be available in those libraries.
+ * Event Espresso supports PHP 5.5+ and WordPress 4.5+ so all functions and code used should be available in those libraries.
  * Class, Interface, Method, and Function names should be clear and concise
  * Methods and Functions should use suitable type hinting where applicable
  * Data types should be used consistently and avoid type switching as much as possible<br>
@@ -17,16 +18,15 @@ All code following the previous WordPress methodologies is now considered legacy
          then use `""` (empty string) for the default instead of `null` or `false` 
          This is especially important for return types in order to minimize the amount of type checking that client 
          code has to perform after receiving a value from a method
- * ALL user viewable strings should be translated using ` esc_html__() ` or a suitable equivalent
  * All comparisons should be using type safe equivalents<br>
     ex: `===` vs `==` or `in_array($int, $array, true)` vs `in_array($int, $array)`
     
     
 ### Formatting Overview
 
- * all non-legacy files are formatted according to the PSR specifications
- * names for non-legacy classes and interfaces follow StudlyCaps formatting
- * names for non-legacy methods and functions follow camelCase formatting
+ * all files are formatted according to the PSR specifications
+ * names for classes and interfaces follow StudlyCaps formatting (unless a legacy system requires a different naming convention). Interfaces should include the word "Interface" at the end (see: [PSR Naming Conventions](http://www.php-fig.org/bylaws/psr-naming-conventions/))
+ * names for methods and functions follow camelCase formatting (unless a legacy system required a different naming convention)
  * names for variables follow snake_case formatting
  * classes and interfaces have phpdoc comment blocks that contain:
      * a brief description of their purpose
@@ -35,11 +35,58 @@ All code following the previous WordPress methodologies is now considered legacy
      * an @since tag listing the version that the code was first added
  * methods and functions have phpdoc comment blocks that contain:
      * a brief description of their purpose (not always necessary for really simple/small blocks of code)
-     * a list of all parameters and their datatypes
+     * a list of all parameters and their data types
      * an @return tag if applicable
      * an @throws tag for each exception type that could be thrown as a result of calling the function
      
      
+### Translations
+ * ALL strings displayed to users through PHP should be translated using `esc_html__()` or a suitable equivalent (avoid `__()` and `_e()` as they allow translators to add malicious Javascript); strings passed to client side Javascript (eg through `wp_localize_script()`) should instead be ran through `wp_strip_all_tags()` (as [client-side Javascript can sometimes UNescape the tags](https://github.com/eventespresso/event-espresso-core/pull/1278#issuecomment-544772217)).
+ * Instead of putting "Event Espresso" in translated strings, use a placeholder and `EventEspresso\core\domain\Domain::brandName()`. Eg `printf(esc_html__('Thanks for installing %1$s!', 'event_espresso'), EventEspresso\core\domain\Domain::brandName());`. 
+ * You should almost never need to put HTML tags into a translated string. Put HTML outside of the translated string (eg `<b><?php esc_html_e('Hi!', 'event_espresso');?></b>`) or use placeholders (eg `printf(esc_html__('Use %1$sthis link%2$s to get a special surprise!', 'event_espresso'), '<a href="https://eventespresso.com">', '</a>');`
+ * When translating strings with multiple placeholders, use [numbered placeholders (eg "$1$s")](https://codex.wordpress.org/I18n_for_WordPress_Developers#Placeholders) instead of simple placeholders (eg "%s").
+ * Also when there are multiple placeholders, be sure to add a translators comment like so:
+ 
+ ```php
+// translators: 1: group affiliation, eg "Rebel" or "Imperial", 2: name of planet, eg "Alderan" or "Tatooine". 
+__('The %1$s base is on %2$s', 'event_espresso');
+```
+ * Add translator comments to other strings where you think it would be helpful to a translator.
+ * Use `esc_html_x()` (or other `_x()` family functions) where that string could be translated differently in different contexts. Eg
+ ```php
+ <button><?php esc_html_e('Post Event', 'event_espresso');?></button>
+ ...
+ <h1><?php esc_html_e('Post Event', 'event_espresso');?></h1>
+ <p>After the event is over, we're all going to Tim Horton's for some donuts...</p>
+ ```
+Notice it's the same translated string with different meanings depending on the context. In French, the first should be translated like "Publier l'événement" and the second as "Après l'événement". In order to allow translators to translate them differently, you must use `esc_html_x()`, like so:
+```php
+ <button><?php echo esc_html_x('Post Event', 'Button to publish the event', 'event_espresso');?></button>
+ ...
+ <h1><?php echo esc_html_x('Post Event', 'Title for information happening after the event', 'event_espresso');?></h1>
+ <p>After the event is over, we're all going to Tim Horton's for some donuts...</p>
+ ```
+ * Sometimes translated strings will be longer than the Code Sniffer's allowed line length. That's normal. Don't add line breaks to fix it, instead just add special comments to indicate the Code Sniffer line length rule should be disabled.
+ ```php
+// 😁 like this
+//phpcs:disable Generic.Files.LineLength.TooLong
+echo esc_html__('This line is too long. But it’s ok. Don’t try breaking it into multiple lines. Just add that comment to tell the Code Sniffer to ignore that rule for now.', 'event_espresso');
+//phpcs:enable
+
+// 😡 not like this!
+echo esc_html__('It’s better than adding a bunch
+                of line breaks which will probably
+                drive translators nuts.',
+                'event_espresso'
+      );
+```
+ * Be kind to translators and avoid "breaking translations" (invalidating existing translations by changing the translated text). The following will break translations:
+    * changing placeholders from "%s" to "$1$s"
+    * changing `esc_html__()` calls to `esc_html_x()`
+    * breaking a long string into multiple shorter ones (eg changing `esc_html__('some very very long string', 'event_espresso');` to `esc_html__('some' . ' very' . ' very' . ' long' . ' string', 'event_espresso');`)
+    * changing an existing translation's context (eg changing `esc_html_x('Post event', 'after the event', 'event_espresso');` to `esc_html_x('Post event', 'subsequent the event', 'event_espresso');`)
+ * But note that it's OK to change `__()` to `esc_html__()` (it won't break translations) 
+
 ### Design and Architecture
 
  * classes, methods, or functions should not be too large. Extract logic into more granular chunks if need be
@@ -47,7 +94,8 @@ All code following the previous WordPress methodologies is now considered legacy
  * optional dependencies can be injected into the constructor or via setters
  * static state should be avoided like the plague
  * non-legacy classes should follow PSR-4 compatible namespacing
- * use `use` statements for all classnames in a file and simplify namespaces in phpdocs 
+ * folders are named using snake_case
+ * use `use` statements for all classnames in a file and simplify namespaces in phpdocs. These should be before all other code except a `namespace` statement, if there is one. Do not add leading slashes to indicate global namespace.
  * can design patterns be utilized to provide a more eloquent versatile solution?
  * code should be DRY and not duplicate existing code
  * code should strive to follow the S.O.L.I.D. principles:
@@ -104,7 +152,9 @@ One of the major decisions made early in the development of Event Espresso 4, wa
 
 Any functions not found in a class should be prefixed with `espresso_`.  An example of this in use is the `espresso_version()` function.
 
-Class Naming
+# Legacy Class Naming
+
+> This only applies to legacy class naming- all new classes should follow [Formatting Overview](#formatting-overview).
 
 All classes for Event Espresso should be prefixed with `EE_`.  An example of this in use is the `EE_Base_Class`.  Note, there are some other important naming schemas related to classes:
 
@@ -128,11 +178,15 @@ Widgets | EEW_{Widget_Name} | These classes define and implement various EE Widg
 
 ### Class Property Method and Property Schema
 
+> This only applies to legacy method and property naming- all new methods and properties should follow [Formatting Overview](#formatting-overview).
+
 All private or protected properties or methods are prefixed with an underscore.  Example Property: `$this->_property`.  Example method: `function _method()`.
 
 All public properties or methods are not prefixed with an underscore.  Example property: `$this->property`.  Example method: `function method() {}`.
 
 ### File Naming Schema
+
+> This only applies to legacy file naming- all new classes should be the class' name followed with `.php`.
 
 File Type | Schema | Description | Example 
 --------- | ------ | ----------- | ------- 
@@ -151,54 +205,7 @@ Widgets | .widget.php | Contains a widget class. | EEW_Upcoming_Events.widget.ph
 
 ## White Space
 
-### Indentation
-
-Your indentation should always reflect logical structure. Use real tabs (1 tab = 4 spaces) and not spaces, as this allows the most flexibility across clients.
-
-### Remove Trailing Spaces
-
-> Make sure you remove trailing whitespace after closing PHP tags
-
-Also remove trailing spaces at the end of each line of code.
-
-### Space between functions/methods
-
-For readability, put 5 lines of white space between functions/methods.
-
-### Inline Spaces
-
-Always put spaces after commas and on both sides of logical and assignment operators.
-
-```php
-$x === 23
-$foo && $bar
-! $foo
-array( 1, 2, 3 )
-```
-
-Put spaces on both sides of the opening and closing parenthesis of `if`, `else if`, `foreach`, `for`, and `switch` blocks.
-
-```php
-foreach ( $foo as $bar ) { 
-      ...
-}
-```
-
-When defining a function, do it like so:
-
-`function myfunction( $param1, $param2 = 'bar'  ) { ... }`
-
-When calling a function, do it like so:
-
-`myfunction( $param1, funcparam( $param2 ) );`
-
-When performing logical comparisons:
-
-`if ( ! $foo ) { ... }`
-
-When type casting:
-
-`foreach ( (array) $foo as $bar { ... }`
+Please refer to the [PSR-2 Coding Standards](http://www.php-fig.org/psr/psr-2/) and use the [PSR Code Sniffer](https://github.com/squizlabs/PHP_CodeSniffer) to verify your code meets our coding standards.
 
 ## PHP In Templates
 
@@ -208,15 +215,12 @@ In general, try to restrict usage of PHP code in templates to only using: `if`, 
 <?php
 /**
  * Example template to show php usage
- *
  * Template: includes/template/example_template.template.php
- */
-
-/**
+ *
  * Template vars in use
- * @var $event 	   An EE_Event object
- * @var $tickets   An array of EE_Ticket objects
- * @var $datetimes An array of EE_Datetime objects
+ * @var EE_Event $event          An EE_Event object
+ * @var EE_Ticket[] $tickets     An array of EE_Ticket objects
+ * @var EE_Datetime[] $datetimes An array of EE_Datetime objects
  */
 ?>
 <div class="container">

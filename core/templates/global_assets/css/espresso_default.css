@@ -1,11 +1,11 @@
 /*******************************************************/
-/****                     -==ATTENTION==-                     ****/
+/****                -==ATTENTION==-                ****/
 /****         MOVE THIS FILE BEFORE EDITING         ****/
-/****                                                                           ****/
-/****                   Please move this file to:                ****/
-/****   wp-content/uploads/espresso/templates  ****/
-/****                  directory before editing                 ****/
-/****                                                                           ****/
+/****                                               ****/
+/****           Please move this file to:           ****/
+/****        wp-content/uploads/espresso/css        ****/
+/****           directory before editing            ****/
+/****                                               ****/
 /*******************************************************/
 
 
@@ -50,8 +50,18 @@
 #wp-admin-bar-espresso-toolbar .ee-icon-ee-cup-thick:before {
     content: "\e60e";
     font-size: 24px !important;
-    left: 8px;
+    left: 4px;
     top: -2px;
+    line-height: 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+@media screen and (min-width: 783px) {
+    #wp-admin-bar-espresso-toolbar .ee-icon-ee-cup-thick:before {
+        vertical-align: middle;
+        position: relative;
+    }
 }
 
 @media screen and (max-width: 782px) {
@@ -392,6 +402,12 @@ input.ee-register-button {
 	float: right;
 }
 
+.ee-button-disabled,
+.ee-button-disabled:hover {
+    border     : 1px solid #CCCCCC !important;
+    background : #CCCCCC !important;
+    box-shadow : none !important;
+}
 
 /* BUTTON SIZES */
 
@@ -728,7 +744,16 @@ input.ee-register-button {
 	margin:0 !important;
 }
 
-
+.espresso-admin .espresso-notices {
+	width: auto;
+	max-width: 100%;
+	text-align: left;
+	border-top: 0;
+	border-right: 0;
+	border-bottom: 0;
+	font-weight: normal;
+	color: #444;
+}
 
 /************* DIALOG HELPER ***************/
 .ee-admin-dialog-container {
@@ -788,7 +813,7 @@ input.ee-register-button {
 .float-left {
 	float: left;
 }
-.clear, 
+.clear,
 .clear-float,
 .ee-clear-float {
 	clear: both;
@@ -881,7 +906,7 @@ input.ee-register-button {
 	 color: #F8D755;
 }
 .lt-grey-text {
-	color: #A39D9C;
+	color: #767676;
 }
 .grey-text {
 	color: #888;
@@ -945,7 +970,7 @@ input.ee-register-button {
 }
 .currency-code {
 	font-size: .7em;
-	color: #a8a8a8;
+	color: #767676;
 	vertical-align: text-top;
 }
 
@@ -1240,11 +1265,11 @@ a[href*="message_type=receipt"]:visited {
 }
 
 /*******************************************************/
-/****                     -==ATTENTION==-                     ****/
+/****                -==ATTENTION==-                ****/
 /****         MOVE THIS FILE BEFORE EDITING         ****/
-/****                                                                           ****/
-/****                   Please move this file to:                ****/
-/****   wp-content/uploads/espresso/templates  ****/
-/****                  directory before editing                 ****/
-/****                                                                           ****/
+/****                                               ****/
+/****           Please move this file to:           ****/
+/****        wp-content/uploads/espresso/css        ****/
+/****           directory before editing            ****/
+/****                                               ****/
 /*******************************************************/

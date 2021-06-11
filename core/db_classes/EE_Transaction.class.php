@@ -3,10 +3,6 @@
 use EventEspresso\core\exceptions\InvalidDataTypeException;
 use EventEspresso\core\exceptions\InvalidInterfaceException;
 
-defined('EVENT_ESPRESSO_VERSION') || exit('No direct script access allowed');
-
-
-
 /**
  * EE_Transaction class
  *
@@ -31,7 +27,6 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     protected $_old_txn_status;
 
 
-
     /**
      * @param array  $props_n_values          incoming values
      * @param string $timezone                incoming timezone
@@ -40,11 +35,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      *                                        date_format and the second value is the time format
      * @return EE_Transaction
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public static function new_instance($props_n_values = array(), $timezone = null, $date_formats = array())
     {
         $has_object = parent::_check_for_object($props_n_values, __CLASS__, $timezone, $date_formats);
-        $txn        = $has_object
+        $txn = $has_object
             ? $has_object
             : new self($props_n_values, false, $timezone, $date_formats);
         if (! $has_object) {
@@ -54,13 +53,16 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * @param array  $props_n_values  incoming values from the database
      * @param string $timezone        incoming timezone as set by the model.  If not set the timezone for
      *                                the website will be used.
      * @return EE_Transaction
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public static function new_instance_from_db($props_n_values = array(), $timezone = null)
     {
@@ -70,13 +72,16 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Sets a meta field indicating that this TXN is locked and should not be updated in the db.
      * If a lock has already been set, then we will attempt to remove it in case it has expired.
      * If that also fails, then an exception is thrown.
      *
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function lock()
     {
@@ -102,18 +107,20 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * removes transaction lock applied in EE_Transaction::lock()
      *
      * @return int
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function unlock()
     {
         return $this->delete_extra_meta('lock');
     }
-
 
 
     /**
@@ -127,6 +134,10 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      *
      * @return boolean
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function is_locked()
     {
@@ -142,18 +153,20 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Gets the meta field indicating that this TXN is locked
      *
      * @return int
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     protected function _get_lock()
     {
-        return (int)$this->get_extra_meta('lock', true, 0);
+        return (int) $this->get_extra_meta('lock', true, 0);
     }
-
 
 
     /**
@@ -161,6 +174,10 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      *
      * @return int
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     protected function _remove_expired_lock()
     {
@@ -172,18 +189,20 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Set transaction total
      *
      * @param float $total total value of transaction
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function set_total($total = 0.00)
     {
-        $this->set('TXN_total', (float)$total);
+        $this->set('TXN_total', (float) $total);
     }
-
 
 
     /**
@@ -191,12 +210,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      *
      * @param float $total_paid total amount paid to date (sum of all payments)
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function set_paid($total_paid = 0.00)
     {
-        $this->set('TXN_paid', (float)$total_paid);
+        $this->set('TXN_paid', (float) $total_paid);
     }
-
 
 
     /**
@@ -205,6 +227,10 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param string $status        whether the transaction is open, declined, accepted,
      *                              or any number of custom values that can be set
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function set_status($status = '')
     {
@@ -212,12 +238,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Set hash salt
      *
      * @param string $hash_salt required for some payment gateways
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function set_hash_salt($hash_salt = '')
     {
@@ -225,12 +254,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Sets TXN_reg_steps array
      *
      * @param array $txn_reg_steps
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function set_reg_steps(array $txn_reg_steps)
     {
@@ -238,24 +270,30 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Gets TXN_reg_steps
      *
      * @return array
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function reg_steps()
     {
         $TXN_reg_steps = $this->get('TXN_reg_steps');
-        return is_array($TXN_reg_steps) ? (array)$TXN_reg_steps : array();
+        return is_array($TXN_reg_steps) ? (array) $TXN_reg_steps : array();
     }
-
 
 
     /**
      * @return string of transaction's total cost, with currency symbol and decimal
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function pretty_total()
     {
@@ -263,12 +301,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Gets the amount paid in a pretty string (formatted and with currency symbol)
      *
      * @return string
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function pretty_paid()
     {
@@ -276,12 +317,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * calculate the amount remaining for this transaction and return;
      *
      * @return float amount remaining
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function remaining()
     {
@@ -289,18 +333,20 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * get Transaction Total
      *
      * @return float
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function total()
     {
-        return (float)$this->get('TXN_total');
+        return (float) $this->get('TXN_total');
     }
-
 
 
     /**
@@ -308,31 +354,43 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      *
      * @return float
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function paid()
     {
-        return (float)$this->get('TXN_paid');
+        return (float) $this->get('TXN_paid');
     }
 
 
-
     /**
+     * @return mixed|null
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function get_cart_session()
     {
-        $session_data = (array)$this->get('TXN_session_data');
+        $session_data = (array) $this->get('TXN_session_data');
         return isset($session_data['cart']) && $session_data['cart'] instanceof EE_Cart
             ? $session_data['cart']
             : null;
     }
 
 
-
     /**
      * get Transaction session data
      *
+     * @return array|mixed
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function session_data()
     {
@@ -352,12 +410,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Set session data within the TXN object
      *
      * @param EE_Session|array $session_data
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function set_txn_session_data($session_data)
     {
@@ -369,17 +430,20 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * get Transaction hash salt
      *
+     * @return mixed
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function hash_salt_()
     {
         return $this->get('TXN_hash_salt');
     }
-
 
 
     /**
@@ -390,11 +454,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      *              set timezone in this class differs from what the timezone is on the blog.
      *            - formatted date string including the UTC (timezone) offset (default).
      *
-     * @param boolean $format - whether to return a unix timestamp (default) or formatted date string
-     * @param boolean $gmt    - whether to return a unix timestamp with UTC offset applied (default)
+     * @param boolean $format   - whether to return a unix timestamp (default) or formatted date string
+     * @param boolean $gmt      - whether to return a unix timestamp with UTC offset applied (default)
      *                          or no UTC offset applied
      * @return string | int
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function datetime($format = false, $gmt = false)
     {
@@ -408,7 +476,6 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Gets registrations on this transaction
      *
@@ -416,6 +483,10 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param boolean $get_cached   TRUE to retrieve cached registrations or FALSE to pull from the db
      * @return EE_Base_Class[]|EE_Registration[]
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function registrations($query_params = array(), $get_cached = false)
     {
@@ -433,13 +504,16 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Gets all the attendees for this transaction (handy for use with EE_Attendee's get_registrations_for_event
      * function for getting attendees and how many registrations they each have for an event)
      *
      * @return mixed EE_Attendee[] by default, int if $output is set to 'COUNT'
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function attendees()
     {
@@ -447,19 +521,21 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Gets payments for this transaction. Unlike other such functions, order by 'DESC' by default
      *
-     * @param array $query_params like EEM_Base::get_all
+     * @param array $query_params @see https://github.com/eventespresso/event-espresso-core/tree/master/docs/G--Model-System/model-query-params.md
      * @return EE_Base_Class[]|EE_Payment[]
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function payments($query_params = array())
     {
         return $this->get_many_related('Payment', $query_params);
     }
-
 
 
     /**
@@ -485,12 +561,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Gets all payments which have not been approved
      *
      * @return EE_Base_Class[]|EEI_Payment[]
      * @throws EE_Error if a model is misconfigured somehow
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function pending_payments()
     {
@@ -508,7 +587,6 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * echoes $this->pretty_status()
      *
@@ -517,12 +595,12 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @throws InvalidArgumentException
      * @throws InvalidDataTypeException
      * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function e_pretty_status($show_icons = false)
     {
         echo $this->pretty_status($show_icons);
     }
-
 
 
     /**
@@ -534,6 +612,7 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @throws InvalidArgumentException
      * @throws InvalidDataTypeException
      * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function pretty_status($show_icons = false)
     {
@@ -542,7 +621,7 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
             false,
             'sentence'
         );
-        $icon   = '';
+        $icon = '';
         switch ($this->status_ID()) {
             case EEM_Transaction::complete_status_code:
                 $icon = $show_icons ? '<span class="dashicons dashicons-yes ee-icon-size-24 green-text"></span>' : '';
@@ -561,15 +640,19 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
                 $icon = $show_icons ? '<span class="dashicons dashicons-plus ee-icon-size-16 orange-text"></span>' : '';
                 break;
         }
-        return $icon . $status[$this->status_ID()];
+        return $icon . $status[ $this->status_ID() ];
     }
-
 
 
     /**
      * get Transaction Status
      *
+     * @return mixed
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function status_ID()
     {
@@ -577,18 +660,20 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Returns TRUE or FALSE for whether or not this transaction cost any money
      *
      * @return boolean
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function is_free()
     {
         return EEH_Money::compare_floats($this->get('TXN_total'), 0, '==');
     }
-
 
 
     /**
@@ -597,12 +682,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      *
      * @return boolean
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function is_completed()
     {
         return $this->status_ID() === EEM_Transaction::complete_status_code;
     }
-
 
 
     /**
@@ -611,12 +699,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      *
      * @return boolean
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function is_incomplete()
     {
         return $this->status_ID() === EEM_Transaction::incomplete_status_code;
     }
-
 
 
     /**
@@ -625,12 +716,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      *
      * @return boolean
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function is_overpaid()
     {
         return $this->status_ID() === EEM_Transaction::overpaid_status_code;
     }
-
 
 
     /**
@@ -640,12 +734,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      *
      * @return boolean
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function is_abandoned()
     {
         return $this->status_ID() === EEM_Transaction::abandoned_status_code;
     }
-
 
 
     /**
@@ -655,12 +752,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      *
      * @return boolean
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function failed()
     {
         return $this->status_ID() === EEM_Transaction::failed_status_code;
     }
-
 
 
     /**
@@ -669,6 +769,10 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param string $type 'html' or 'pdf' (default is pdf)
      * @return string
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function invoice_url($type = 'html')
     {
@@ -680,23 +784,25 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Gets the primary registration only
      *
      * @return EE_Base_Class|EE_Registration
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function primary_registration()
     {
-        $registrations = (array)$this->get_many_related(
+        $registrations = (array) $this->get_many_related(
             'Registration',
             array(array('REG_count' => EEM_Registration::PRIMARY_REGISTRANT_COUNT))
         );
         foreach ($registrations as $registration) {
             // valid registration that is NOT cancelled or declined ?
-            if (
-                $registration instanceof EE_Registration
+            if ($registration instanceof EE_Registration
                 && ! in_array($registration->status_ID(), EEM_Registration::closed_reg_statuses(), true)
             ) {
                 return $registration;
@@ -707,13 +813,16 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Gets the URL for viewing the receipt
      *
      * @param string $type 'pdf' or 'html' (default is 'html')
      * @return string
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function receipt_url($type = 'html')
     {
@@ -725,13 +834,16 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Gets the URL of the thank you page with this registration REG_url_link added as
      * a query parameter
      *
      * @return string
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function payment_overview_url()
     {
@@ -740,10 +852,13 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * @return string
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function gateway_response_on_transaction()
     {
@@ -752,12 +867,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Get the status object of this object
      *
      * @return EE_Base_Class|EE_Status
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function status_obj()
     {
@@ -765,19 +883,21 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Gets all the extra meta info on this payment
      *
-     * @param array $query_params like EEM_Base::get_all
+     * @param array $query_params @see https://github.com/eventespresso/event-espresso-core/tree/master/docs/G--Model-System/model-query-params.md
      * @return EE_Base_Class[]|EE_Extra_Meta
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function extra_meta($query_params = array())
     {
         return $this->get_many_related('Extra_Meta', $query_params);
     }
-
 
 
     /**
@@ -786,12 +906,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param EE_Registration $registration
      * @return EE_Base_Class the relation was added to
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function add_registration(EE_Registration $registration)
     {
         return $this->_add_relation_to($registration, 'Registration');
     }
-
 
 
     /**
@@ -801,6 +924,10 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param int $registration_or_id
      * @return EE_Base_Class that was removed from being related
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function remove_registration_with_id($registration_or_id)
     {
@@ -808,18 +935,20 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Gets all the line items which are for ACTUAL items
      *
      * @return EE_Line_Item[]
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function items_purchased()
     {
         return $this->line_items(array(array('LIN_type' => EEM_Line_Item::type_line_item)));
     }
-
 
 
     /**
@@ -828,12 +957,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param EE_Line_Item $line_item
      * @return EE_Base_Class the relation was added to
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function add_line_item(EE_Line_Item $line_item)
     {
         return $this->_add_relation_to($line_item, 'Line_Item');
     }
-
 
 
     /**
@@ -842,6 +974,10 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param array $query_params
      * @return EE_Base_Class[]|EE_Line_Item[]
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function line_items($query_params = array())
     {
@@ -849,18 +985,20 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Gets all the line items which are taxes on the total
      *
      * @return EE_Line_Item[]
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function tax_items()
     {
         return $this->line_items(array(array('LIN_type' => EEM_Line_Item::type_tax)));
     }
-
 
 
     /**
@@ -870,6 +1008,10 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param bool $create_if_not_found
      * @return \EE_Line_Item
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function total_line_item($create_if_not_found = true)
     {
@@ -881,23 +1023,25 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Returns the total amount of tax on this transaction
      * (assumes there's only one tax subtotal line item)
      *
      * @return float
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function tax_total()
     {
         $tax_line_item = $this->tax_total_line_item();
         if ($tax_line_item) {
-            return (float)$tax_line_item->total();
+            return (float) $tax_line_item->total();
         }
-        return (float)0;
+        return (float) 0;
     }
-
 
 
     /**
@@ -905,6 +1049,10 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      *
      * @return EE_Line_Item
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function tax_total_line_item()
     {
@@ -912,12 +1060,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Gets the array of billing info for the gateway and for this transaction's primary registration's attendee.
      *
      * @return EE_Form_Section_Proper
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function billing_info()
     {
@@ -964,12 +1115,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Gets PMD_ID
      *
      * @return int
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function payment_method_ID()
     {
@@ -977,18 +1131,20 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Sets PMD_ID
      *
      * @param int $PMD_ID
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function set_payment_method_ID($PMD_ID)
     {
         $this->set('PMD_ID', $PMD_ID);
     }
-
 
 
     /**
@@ -998,6 +1154,10 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      *
      * @return EE_Payment_Method
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function payment_method()
     {
@@ -1013,18 +1173,20 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * Gets the last payment made
      *
      * @return EE_Base_Class|EE_Payment
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function last_payment()
     {
         return $this->get_first_related('Payment', array('order_by' => array('PAY_ID' => 'desc')));
     }
-
 
 
     /**
@@ -1035,12 +1197,12 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @throws InvalidArgumentException
      * @throws InvalidDataTypeException
      * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function non_ticket_line_items()
     {
         return EEM_Line_Item::instance()->get_all_non_ticket_line_items_for_transaction($this->ID());
     }
-
 
 
     /**
@@ -1049,6 +1211,10 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param  boolean $update whether to save the TXN
      * @return bool whether the TXN was saved
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      * @throws RuntimeException
      */
     public function update_status_based_on_total_paid($update = true)
@@ -1073,7 +1239,6 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
         }
         return false;
     }
-
 
 
     /**
@@ -1104,7 +1269,6 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * @return string
      */
@@ -1112,7 +1276,6 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     {
         return $this->_old_txn_status;
     }
-
 
 
     /**
@@ -1127,18 +1290,20 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * reg_status_updated
      *
      * @return bool
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function txn_status_updated()
     {
         return $this->status_ID() !== $this->_old_txn_status && $this->_old_txn_status !== null;
     }
-
 
 
     /**
@@ -1151,6 +1316,10 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param bool   $check_all
      * @return bool|int
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     private function _reg_steps_completed($reg_step_slug = '', $check_all = true)
     {
@@ -1189,7 +1358,6 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * all_reg_steps_completed
      * returns:
@@ -1198,12 +1366,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      *
      * @return bool
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function all_reg_steps_completed()
     {
         return $this->_reg_steps_completed();
     }
-
 
 
     /**
@@ -1216,12 +1387,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param string $exception
      * @return bool
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function all_reg_steps_completed_except($exception = '')
     {
         return $this->_reg_steps_completed($exception);
     }
-
 
 
     /**
@@ -1233,12 +1407,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      *
      * @return bool
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function all_reg_steps_completed_except_final_step()
     {
         return $this->_reg_steps_completed('finalize_registration');
     }
-
 
 
     /**
@@ -1251,12 +1428,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param string $reg_step_slug
      * @return bool|int
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function reg_step_completed($reg_step_slug)
     {
         return $this->_reg_steps_completed($reg_step_slug, false);
     }
-
 
 
     /**
@@ -1268,12 +1448,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      *
      * @return bool|int
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function final_reg_step_completed()
     {
         return $this->_reg_steps_completed('finalize_registration', false);
     }
-
 
 
     /**
@@ -1283,12 +1466,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param string $reg_step_slug
      * @return boolean
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function set_reg_step_initiated($reg_step_slug)
     {
         return $this->_set_reg_step_completed_status($reg_step_slug, time());
     }
-
 
 
     /**
@@ -1298,12 +1484,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param string $reg_step_slug
      * @return boolean
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function set_reg_step_completed($reg_step_slug)
     {
         return $this->_set_reg_step_completed_status($reg_step_slug, true);
     }
-
 
 
     /**
@@ -1313,12 +1502,15 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param string $reg_step_slug
      * @return boolean
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function set_reg_step_not_completed($reg_step_slug)
     {
         return $this->_set_reg_step_completed_status($reg_step_slug, false);
     }
-
 
 
     /**
@@ -1329,6 +1521,10 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param  boolean|int $status
      * @return boolean
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     private function _set_reg_step_completed_status($reg_step_slug, $status)
     {
@@ -1337,35 +1533,34 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
         // get reg steps array
         $txn_reg_steps = $this->reg_steps();
         // if reg step does NOT exist
-        if (! isset($txn_reg_steps[$reg_step_slug])) {
+        if (! isset($txn_reg_steps[ $reg_step_slug ])) {
             return false;
         }
         // if  we're trying to complete a step that is already completed
-        if ($txn_reg_steps[$reg_step_slug] === true) {
+        if ($txn_reg_steps[ $reg_step_slug ] === true) {
             return true;
         }
         // if  we're trying to complete a step that hasn't even started
-        if ($status === true && $txn_reg_steps[$reg_step_slug] === false) {
+        if ($status === true && $txn_reg_steps[ $reg_step_slug ] === false) {
             return false;
         }
         // if current status value matches the incoming value (no change)
         // type casting as int means values should collapse to either 0, 1, or a timestamp like 1234567890
-        if ((int)$txn_reg_steps[$reg_step_slug] === (int)$status) {
+        if ((int) $txn_reg_steps[ $reg_step_slug ] === (int) $status) {
             // this will happen in cases where multiple AJAX requests occur during the same step
             return true;
         }
         // if we're trying to set a start time, but it has already been set...
-        if (is_numeric($status) && is_numeric($txn_reg_steps[$reg_step_slug])) {
+        if (is_numeric($status) && is_numeric($txn_reg_steps[ $reg_step_slug ])) {
             // skip the update below, but don't return FALSE so that errors won't be displayed
             return true;
         }
         // update completed status
-        $txn_reg_steps[$reg_step_slug] = $status;
+        $txn_reg_steps[ $reg_step_slug ] = $status;
         $this->set_reg_steps($txn_reg_steps);
         $this->save();
         return true;
     }
-
 
 
     /**
@@ -1376,15 +1571,18 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param string $reg_step_slug
      * @return void
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function remove_reg_step($reg_step_slug)
     {
         // get reg steps array
         $txn_reg_steps = $this->reg_steps();
-        unset($txn_reg_steps[$reg_step_slug]);
+        unset($txn_reg_steps[ $reg_step_slug ]);
         $this->set_reg_steps($txn_reg_steps);
     }
-
 
 
     /**
@@ -1395,6 +1593,10 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @param bool $save
      * @return bool
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function toggle_failed_transaction_status($save = true)
     {
@@ -1410,25 +1612,26 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * toggle_abandoned_transaction_status
      * upgrades a TXNs status from failed or abandoned to incomplete
      *
      * @return bool
      * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
      */
     public function toggle_abandoned_transaction_status()
     {
         // if TXN status has not been updated already due to a payment, and is still set as "failed" or "abandoned"...
         $txn_status = $this->status_ID();
-        if (
-            $txn_status === EEM_Transaction::failed_status_code
+        if ($txn_status === EEM_Transaction::failed_status_code
             || $txn_status === EEM_Transaction::abandoned_status_code
         ) {
             // if a contact record for the primary registrant has been created
-            if (
-                $this->primary_registration() instanceof EE_Registration
+            if ($this->primary_registration() instanceof EE_Registration
                 && $this->primary_registration()->attendee() instanceof EE_Attendee
             ) {
                 $this->set_status(EEM_Transaction::incomplete_status_code);
@@ -1442,7 +1645,6 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
     }
 
 
-
     /**
      * checks if an Abandoned TXN has any related payments, and if so,
      * updates the TXN status based on the amount paid
@@ -1452,6 +1654,7 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
      * @throws InvalidInterfaceException
      * @throws InvalidArgumentException
      * @throws RuntimeException
+     * @throws ReflectionException
      */
     public function verify_abandoned_transaction_status()
     {
@@ -1489,5 +1692,23 @@ class EE_Transaction extends EE_Base_Class implements EEI_Transaction
         }
     }
 
-}/* End of file EE_Transaction.class.php */
-/* Location: includes/classes/EE_Transaction.class.php */
+
+    /**
+     * @since 4.10.4.p
+     * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws ReflectionException
+     * @throws RuntimeException
+     */
+    public function recalculateLineItems()
+    {
+        $total_line_item = $this->total_line_item(false);
+        if ($total_line_item instanceof EE_Line_Item) {
+            EEH_Line_Item::resetIsTaxableForTickets($total_line_item);
+            return EEH_Line_Item::apply_taxes($total_line_item, true);
+        }
+        return false;
+    }
+}

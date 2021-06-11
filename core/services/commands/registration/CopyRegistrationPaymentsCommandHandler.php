@@ -1,16 +1,13 @@
 <?php
+
 namespace EventEspresso\core\services\commands\registration;
 
+use EE_Error;
 use EventEspresso\core\domain\services\registration\CopyRegistrationService;
-use EventEspresso\core\exceptions\InvalidEntityException;
+use EventEspresso\core\exceptions\UnexpectedEntityException;
 use EventEspresso\core\services\commands\CommandHandler;
 use EventEspresso\core\services\commands\CommandInterface;
-
-if ( ! defined('EVENT_ESPRESSO_VERSION')) {
-    exit('No direct script access allowed');
-}
-
-
+use RuntimeException;
 
 /**
  * Class CopyRegistrationPaymentsCommandHandler
@@ -32,7 +29,6 @@ class CopyRegistrationPaymentsCommandHandler extends CommandHandler
     private $copy_registration_service;
 
 
-
     /**
      * Command constructor
      *
@@ -44,25 +40,18 @@ class CopyRegistrationPaymentsCommandHandler extends CommandHandler
     }
 
 
-
     /**
-     * @param \EventEspresso\core\services\commands\CommandInterface $command
+     * @param CommandInterface|CopyRegistrationPaymentsCommand $command
      * @return boolean
+     * @throws EE_Error
+     * @throws UnexpectedEntityException
+     * @throws RuntimeException
      */
     public function handle(CommandInterface $command)
     {
-        /** @var CopyRegistrationPaymentsCommand $command */
-        if ( ! $command instanceof CopyRegistrationPaymentsCommand) {
-            throw new InvalidEntityException(get_class($command), 'CopyRegistrationPaymentsCommand');
-        }
         return $this->copy_registration_service->copyPaymentDetails(
             $command->targetRegistration(),
             $command->registrationToCopy()
         );
     }
-
-
-
 }
-// End of file CopyRegistrationPaymentsCommandHandler.php
-// Location: /CopyRegistrationPaymentsCommandHandler.php

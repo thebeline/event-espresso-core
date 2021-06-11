@@ -191,7 +191,7 @@ jQuery(document).ready( function($) {
 			// don't cache ajax
 			$.ajaxSetup ({ cache: false });
 			// clear firefox and safari cache
-			$(window).unload( function() {});
+			$(window).on("unload", function() {});
 		},
 
 
@@ -223,7 +223,9 @@ jQuery(document).ready( function($) {
 
 				unhighlight: function( element ) {
 					if ( ! $(element ).hasClass('spco-next-step-btn') ) {
-						$(element).removeClass('ee-needs-value').addClass('ee-has-value');
+						if ( $( element ).attr( 'value' ) ) {
+							$( element ).removeClass( 'ee-needs-value' ).addClass( 'ee-has-value' );
+						}
 					}
 				},
 
@@ -255,7 +257,12 @@ jQuery(document).ready( function($) {
 		track_validation_error : function( invalid_input_id ) {
             // convert to jQuery object
 			var $invalid_input = $( '#' + invalid_input_id );
-			var $invalid_input_label = $( '#' + invalid_input_id + '-lbl' );
+			var is_multi = $invalid_input.is( ':radio' )
+				|| $invalid_input.is(':checkbox' );
+			var invalid_input_label_id = is_multi
+				? $invalid_input.data('question_label')
+				: invalid_input_id + '-lbl';
+			var $invalid_input_label = $( '#' + invalid_input_label_id );
 			SPCO.invalid_input_to_scroll_to = SPCO.invalid_input_to_scroll_to === null
                 ? $invalid_input
                 : SPCO.invalid_input_to_scroll_to;
@@ -266,7 +273,7 @@ jQuery(document).ready( function($) {
 			// add to list of validation errors
 			if ($invalid_input.hasClass('email') ) {
 				SPCO.error_msgs.push( eei18n.enter_valid_email );
-			} else if ($invalid_input.is(':radio') || $invalid_input.is(':checkbox') ) {
+			} else if (is_multi) {
 				SPCO.error_msgs.push( input_label_text + eei18n.required_multi_field );
 			} else {
 				SPCO.error_msgs.push( input_label_text + eei18n.required_field );
@@ -454,10 +461,15 @@ jQuery(document).ready( function($) {
 		 */
 		set_listener_for_input_validation_value_change : function() {
 			SPCO.form_inputs.focusout( function() {
-				if ( this.type !== 'file' ) {
-                    $(this).val( $.trim( $(this).val() ) );
+		        var input = $(this);
+		        if ( this.type !== 'file' && this.type !== 'select-multiple' ) {
+                    input.val( $.trim( input.val() ) );
+		        }
+	        // Datepicker validation would get triggered before it's auto-filled by JS, which erroneously reports an
+				// error, so don't trigger its validation on focusout.
+		        if( ! input.hasClass('datepicker')){
+					input.valid();
 				}
-				$(this).valid();
             });
 		},
 
@@ -519,7 +531,7 @@ jQuery(document).ready( function($) {
 			if ( SPCO.registration_time_limit.length > 0 && parseInt( eei18n.empty_cart ) !== 1 && parseInt( eei18n.revisit ) !== 1 ) {
 				$( '#spco-registration-time-limit-pg' ).show();
 				//SPCO.registration_session_expiration = new Date(Date.parse( $('#spco-registration-expiration-spn').html() ));
-				var layout = (( new Date() ) - SPCO.registration_session_expiration ) < ( 60 * 60 * 1000 ) ? '{m<}{mnn}{sep}{m>}{s<}{snn}{s>} {ml}' : '{h<}{hnn}{sep}{h>}{m<}{mnn}{sep}{m>}{s<}{snn}{s>} {hl}';
+				var layout = ( SPCO.registration_session_expiration - ( new Date() ) ) < ( 60 * 60 * 1000 ) ? '{m<}{mnn}{sep}{m>}{s<}{snn}{s>} {ml}' : '{h<}{hnn}{sep}{h>}{m<}{mnn}{sep}{m>}{s<}{snn}{s>} {hl}';
 				SPCO.registration_time_limit.countdown({
 					labels: [ eei18n.timer_years, eei18n.timer_months, eei18n.timer_weeks, eei18n.timer_days, eei18n.timer_hours, eei18n.timer_minutes, eei18n.timer_seconds ],
 					labels1: [ eei18n.timer_year, eei18n.timer_month, eei18n.timer_week, eei18n.timer_day, eei18n.timer_hour, eei18n.timer_minute, eei18n.timer_second ],
@@ -725,7 +737,7 @@ jQuery(document).ready( function($) {
 		enable_submit_buttons : function() {
 			//console.log( JSON.stringify( '**enable_submit_buttons**', null, 4 ) );
 			$('.spco-next-step-btn').each( function() {
-				$(this).prop( 'disabled', false ).removeClass( 'disabled spco-disabled-submit-btn' );
+				$(this).prop( 'disabled', false ).removeClass( 'disabled spco-disabled-submit-btn ee-button-disabled' );
 			});
 		},
 
@@ -737,7 +749,7 @@ jQuery(document).ready( function($) {
 		disable_submit_buttons : function() {
 			//console.log( JSON.stringify( '**disable_submit_buttons**', null, 4 ) );
 			$('.spco-next-step-btn').each( function() {
-				$(this).prop( 'disabled', true ).addClass('disabled spco-disabled-submit-btn');
+				$(this).prop( 'disabled', true ).addClass('disabled spco-disabled-submit-btn ee-button-disabled');
 			});
 		},
 

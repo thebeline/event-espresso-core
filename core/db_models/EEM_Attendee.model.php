@@ -2,11 +2,6 @@
 use EventEspresso\core\services\loaders\Loader;
 use EventEspresso\core\services\orm\ModelFieldFactory;
 
-defined('EVENT_ESPRESSO_VERSION') || exit('No direct script access allowed');
-
-
-
-
 /**
  * Attendee Model
  *
@@ -92,6 +87,8 @@ class EEM_Attendee extends EEM_CPT_Base
     const system_question_lname = 'lname';
 
     const system_question_email = 'email';
+
+    const system_question_email_confirm = 'email_confirm';
 
     const system_question_address = 'address';
 
@@ -203,6 +200,24 @@ class EEM_Attendee extends EEM_CPT_Base
                     false,
                     'publish'
                 ),
+                'password' => new EE_Password_Field(
+                    'post_password',
+                    __('Password', 'event_espresso'),
+                    false,
+                    '',
+                    array(
+                        'ATT_bio',
+                        'ATT_short_bio',
+                        'ATT_address',
+                        'ATT_address2',
+                        'ATT_city',
+                        'STA_ID',
+                        'CNT_ISO',
+                        'ATT_zip',
+                        'ATT_email',
+                        'ATT_phone'
+                    )
+                )
             ),
             'Attendee_Meta' => array(
                 'ATTM_ID'      => $model_field_factory->createDbOnlyIntField(
@@ -270,11 +285,12 @@ class EEM_Attendee extends EEM_CPT_Base
             'Event'             => new EE_HABTM_Relation('Registration', false),
             'WP_User'           => new EE_Belongs_To_Relation(),
             'Message'           => new EE_Has_Many_Any_Relation(false),
-            //allow deletion of attendees even if they have messages in the queue for them.
+            // allow deletion of attendees even if they have messages in the queue for them.
             'Term_Relationship' => new EE_Has_Many_Relation(),
             'Term_Taxonomy'     => new EE_HABTM_Relation('Term_Relationship'),
         );
         $this->_caps_slug = 'contacts';
+        $this->model_chain_to_password = '';
         parent::__construct($timezone);
     }
 
@@ -289,8 +305,8 @@ class EEM_Attendee extends EEM_CPT_Base
      */
     public function get_attendee_field_for_system_question($system_question_string)
     {
-        return isset($this->_system_question_to_attendee_field_name[$system_question_string])
-            ? $this->_system_question_to_attendee_field_name[$system_question_string]
+        return isset($this->_system_question_to_attendee_field_name[ $system_question_string ])
+            ? $this->_system_question_to_attendee_field_name[ $system_question_string ]
             : null;
     }
 
@@ -418,14 +434,10 @@ class EEM_Attendee extends EEM_CPT_Base
      */
     public function get_array_of_contacts_from_reg_ids($ids)
     {
-        $ids = (array)$ids;
+        $ids = (array) $ids;
         $_where = array(
             'Registration.REG_ID' => array('in', $ids),
         );
         return $this->get_all(array($_where));
     }
-
-
 }
-// End of file EEM_Attendee.model.php
-// Location: /ee-mvc/models/EEM_Attendee.model.php

@@ -3,8 +3,7 @@ jQuery(document).ready(function($) {
 	$.ajaxSetup ({ cache: false });
 
 	// clear firefox and safari cache
-	$(window).unload( function() {});
-
+	$(window).on("unload", function() {});
 
 	$('#reg-admin-attendee-questions-submit').prop( 'disabled', true );
 
@@ -38,7 +37,7 @@ jQuery(document).ready(function($) {
 
 	$('#reg-admin-attendee-questions-frm').on( 'click', '.reg-admin-edit-attendee-question-lnk', function(e) {
 		e.preventDefault();
-		$(this).closest('table').find('td, .reg-admin-attendee-questions-input-td' ).each(function() {//also select deprecated .reg-admin-attendee-questions-input-td
+		$(this).closest('table.question-group-questions').find('td, .reg-admin-attendee-questions-input-td' ).each(function() {//also select deprecated .reg-admin-attendee-questions-input-td
 			$(this).removeClass('disabled-input');
 			$(this).find('input').prop( 'disabled', false ).addClass('editable-input');
 			$(this).find('select').prop( 'disabled', false ).addClass('editable-input');
@@ -53,6 +52,22 @@ jQuery(document).ready(function($) {
 		edit_lnk = '<span class="reminder-spn">' + eei18n.update_att_qstns + '<span><span class="hidden">' + edit_lnk + '<span>';
 		$(this).closest('table').find('.reg-admin-edit-attendee-question-td' ).html( edit_lnk );
 	});
+
+
+	$('.DTT_EVT_start').on('click', '.ee-more-datetimes-toggle', function(e){
+	    e.preventDefault();
+	    var show = $(this).hasClass('dashicons-plus'),
+            addIcon = show ? 'dashicons-minus' : 'dashicons-plus',
+            removeIcon = show ? 'dashicons-plus' : 'dashicons-minus',
+            $moreItems = $('.more-items', $(this).parent());
+
+	    $(this).removeClass(removeIcon).addClass(addIcon);
+	    if (show) {
+	        $moreItems.removeClass('hidden');
+        } else {
+	        $moreItems.addClass('hidden');
+        }
+    });
 
 
 

@@ -2,7 +2,7 @@
 /**
  * Contains test class for /core/helpers/EEH_Template.helper.php
  *
- * @since 				$VID:$
+ *
  * @package 			Event Espresso
  * @subpackage 	tests
  */
@@ -15,11 +15,14 @@
  * @package 			Event Espresso
  * @subpackage 	core
  * @author 				Brent Christensen
- * @since 				$VID:$
+ *
  *
  */
 class EEH_TemplateTest extends PHPUnit_Framework_TestCase {
 
+    /**
+     * @doesNotPerformAssertions
+     */
 	public function test() {
 
 	}

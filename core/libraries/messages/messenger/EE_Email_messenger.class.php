@@ -1,7 +1,5 @@
 <?php
 
-defined('EVENT_ESPRESSO_VERSION') || exit('No direct access allowed.');
-
 /**
  * This sets up the email messenger for the EE_messages (notifications) subsystem in EE.
  */
@@ -49,7 +47,7 @@ class EE_Email_messenger extends EE_messenger
      */
     public function __construct()
     {
-        //set name and description properties
+        // set name and description properties
         $this->name                = 'email';
         $this->description         = sprintf(
             esc_html__(
@@ -64,7 +62,7 @@ class EE_Email_messenger extends EE_messenger
         );
         $this->activate_on_install = true;
 
-        //we're using defaults so let's call parent constructor that will take care of setting up all the other
+        // we're using defaults so let's call parent constructor that will take care of setting up all the other
         // properties
         parent::__construct();
     }
@@ -86,7 +84,7 @@ class EE_Email_messenger extends EE_messenger
      */
     protected function _set_valid_shortcodes()
     {
-        //remember by leaving the other fields not set, those fields will inherit the valid shortcodes from the
+        // remember by leaving the other fields not set, those fields will inherit the valid shortcodes from the
         // message type.
         $this->_valid_shortcodes = array(
             'to'   => array('email', 'event_author', 'primary_registration_details', 'recipient_details'),
@@ -188,7 +186,7 @@ class EE_Email_messenger extends EE_messenger
      */
     public function do_secondary_messenger_hooks($sending_messenger_name)
     {
-        if ($sending_messenger_name = 'html') {
+        if ($sending_messenger_name === 'html') {
             add_filter('FHEE__EE_Messages_Template_Pack__get_variation', array($this, 'add_email_css'), 10, 8);
         }
     }
@@ -204,7 +202,7 @@ class EE_Email_messenger extends EE_messenger
         $url,
         EE_Messages_Template_Pack $template_pack
     ) {
-        //prevent recursion on this callback.
+        // prevent recursion on this callback.
         remove_filter('FHEE__EE_Messages_Template_Pack__get_variation', array($this, 'add_email_css'), 10);
         $variation = $this->get_variation($template_pack, $message_type, $url, 'main', $variation, false);
 
@@ -318,7 +316,7 @@ class EE_Email_messenger extends EE_messenger
                 'format'     => '%s',
             ),
             'content' => '',
-            //left empty b/c it is in the "extra array" but messenger still needs needs to know this is a field.
+            // left empty b/c it is in the "extra array" but messenger still needs needs to know this is a field.
             'extra'   => array(
                 'content' => array(
                     'main'          => array(
@@ -433,8 +431,10 @@ class EE_Email_messenger extends EE_messenger
     protected function _send_message()
     {
         $success = wp_mail(
-            html_entity_decode($this->_to, ENT_QUOTES, "UTF-8"),
-            stripslashes(html_entity_decode($this->_subject, ENT_QUOTES, "UTF-8")),
+            $this->_to,
+            // some old values for subject may be expecting HTML entities to be decoded in the subject
+            // and subjects aren't interpreted as HTML, so there should be no HTML in them
+            wp_strip_all_tags(wp_specialchars_decode($this->_subject, ENT_QUOTES)),
             $this->_body(),
             $this->_headers()
         );
@@ -480,18 +480,23 @@ class EE_Email_messenger extends EE_messenger
     protected function _headers()
     {
         $this->_ensure_has_from_email_address();
-        $from    = stripslashes_deep(html_entity_decode($this->_from, ENT_QUOTES, "UTF-8"));
+        $from    = $this->_from;
         $headers = array(
             'From:' . $from,
             'Reply-To:' . $from,
             'Content-Type:text/html; charset=utf-8',
         );
 
-        if (! empty($this->_cc)) {
+        /**
+         * Second condition added as a result of https://events.codebasehq.com/projects/event-espresso/tickets/11416 to
+         * cover back compat where there may be users who have saved cc values in their db for the newsletter message
+         * type which they are no longer able to change.
+         */
+        if (! empty($this->_cc) && ! $this->_incoming_message_type instanceof EE_Newsletter_message_type) {
             $headers[] = 'cc: ' . $this->_cc;
         }
 
-        //but wait!  Header's for the from is NOT reliable because some plugins don't respect From: as set in the
+        // but wait!  Header's for the from is NOT reliable because some plugins don't respect From: as set in the
         // header.
         add_filter('wp_mail_from', array($this, 'set_from_address'), 100);
         add_filter('wp_mail_from_name', array($this, 'set_from_name'), 100);
@@ -549,7 +554,7 @@ class EE_Email_messenger extends EE_messenger
     public function set_from_address($from_email)
     {
         $parsed_from = $this->_parse_from();
-        //includes fallback if the parsing failed.
+        // includes fallback if the parsing failed.
         $from_email = is_array($parsed_from) && ! empty($parsed_from[1])
             ? $parsed_from[1]
             : get_bloginfo('admin_email');
@@ -571,10 +576,11 @@ class EE_Email_messenger extends EE_messenger
             $from_name = $parsed_from[0];
         }
 
-        //if from name is "WordPress" let's sub in the site name instead (more friendly!)
-        $from_name = $from_name == 'WordPress' ? get_bloginfo() : $from_name;
+        // if from name is "WordPress" let's sub in the site name instead (more friendly!)
+        // but realize the default name is HTML entity-encoded
+        $from_name = $from_name == 'WordPress' ? wp_specialchars_decode(get_bloginfo(), ENT_QUOTES) : $from_name;
 
-        return stripslashes_deep(html_entity_decode($from_name, ENT_QUOTES, "UTF-8"));
+        return $from_name;
     }
 
 
@@ -588,15 +594,11 @@ class EE_Email_messenger extends EE_messenger
      */
     protected function _body($preview = false)
     {
-        //setup template args!
+        // setup template args!
         $this->_template_args = array(
             'subject'   => $this->_subject,
             'from'      => $this->_from,
-            'main_body' => wpautop(
-                stripslashes_deep(
-                    html_entity_decode($this->_content, ENT_QUOTES, "UTF-8")
-                )
-            ),
+            'main_body' => wpautop($this->_content),
         );
         $body                 = $this->_get_main_template($preview);
 
@@ -607,10 +609,10 @@ class EE_Email_messenger extends EE_messenger
          * @return  bool    true  indicates to use the inliner, false bypasses it.
          */
         if (apply_filters('FHEE__EE_Email_messenger__apply_CSSInliner ', true, $preview)) {
-            //require CssToInlineStyles library and its dependencies via composer autoloader
+            // require CssToInlineStyles library and its dependencies via composer autoloader
             require_once EE_THIRD_PARTY . 'cssinliner/vendor/autoload.php';
 
-            //now if this isn't a preview, let's setup the body so it has inline styles
+            // now if this isn't a preview, let's setup the body so it has inline styles
             if (! $preview || ($preview && defined('DOING_AJAX'))) {
                 $style = file_get_contents(
                     $this->get_variation(
@@ -623,12 +625,11 @@ class EE_Email_messenger extends EE_messenger
                     true
                 );
                 $CSS   = new TijsVerkoyen\CssToInlineStyles\CssToInlineStyles($body, $style);
-                //for some reason the library has a bracket and new line at the beginning.  This takes care of that.
+                // for some reason the library has a bracket and new line at the beginning.  This takes care of that.
                 $body  = ltrim($CSS->convert(true), ">\n");
-                //see https://events.codebasehq.com/projects/event-espresso/tickets/8609
+                // see https://events.codebasehq.com/projects/event-espresso/tickets/8609
                 $body  = ltrim($body, "<?");
             }
-
         }
         return $body;
     }
@@ -643,7 +644,7 @@ class EE_Email_messenger extends EE_messenger
     public function get_existing_test_settings()
     {
         $settings = parent::get_existing_test_settings();
-        //override subject if present because we always want it to be fresh.
+        // override subject if present because we always want it to be fresh.
         if (is_array($settings) && ! empty($settings['subject'])) {
             $settings['subject'] = sprintf(__('Test email sent from %s', 'event_espresso'), get_bloginfo('name'));
         }

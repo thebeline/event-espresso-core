@@ -7,6 +7,7 @@
  * @subpackage    tests
  */
 
+use EventEspresso\core\services\loaders\LoaderFactory;
 
 /**
  * This is used to override any existing WP_UnitTestCase methods that need specific handling in EE.  We
@@ -111,7 +112,7 @@ class EE_UnitTestCase extends WP_UnitTestCase
         add_filter('FHEE__EEH_Activation__drop_index__short_circuit', '__return_true');
 
         // load factories
-        EEH_Autoloader::register_autoloaders_for_each_file_in_folder(EE_TESTS_DIR . 'includes' . DS . 'factories');
+        EEH_Autoloader::register_autoloaders_for_each_file_in_folder(EE_TESTS_DIR . 'includes/factories');
         $this->factory = new EE_UnitTest_Factory();
 
         //IF we detect we're running tests on WP4.1, then we need to make sure current_user_can tests pass by implementing
@@ -827,7 +828,7 @@ class EE_UnitTestCase extends WP_UnitTestCase
      * @param string $error_message
      * @return void
      */
-    public function assertHTMLEquals($expected, $actual, $error_message = null)
+    public function assertHTMLEquals($expected, $actual, $error_message = '')
     {
         $expected_standardized_whitespace = preg_replace('~(\\s)+~', PHP_EOL, $expected);
         $actual_standardized_whitespace = preg_replace('~(\\s)+~', PHP_EOL, $actual);
@@ -875,9 +876,9 @@ class EE_UnitTestCase extends WP_UnitTestCase
                     $args[$fk->get_name()] = $fk->get_default_value();
                 }
             } elseif ($relation instanceof EE_Belongs_To_Relation) {
-                $obj = $this->new_model_obj_with_dependencies($related_model_name);
                 $fk = $model->get_foreign_key_to($related_model_name);
                 if (!isset($args[$fk->get_name()])) {
+                    $obj = $this->new_model_obj_with_dependencies($related_model_name);
                     $args[$fk->get_name()] = $obj->ID();
                 }
             }
@@ -898,12 +899,23 @@ class EE_UnitTestCase extends WP_UnitTestCase
                         //don't make system questions etc
                         'QST_system',
                         'QSG_system',
-                        'QSO_system'
+                        'QSO_system',
+                        'password'
                     ),
                     true
                 )
             ) {
                 $value = NULL;
+            } elseif (
+                $field_name === 'TKT_start_date' ||
+                $field_name === 'DTT_EVT_start'
+            ) {
+                $value = time() + MONTH_IN_SECONDS;
+            } elseif (
+                $field_name === 'TKT_end_date' ||
+                $field_name === 'DTT_EVT_end'
+            ) {
+                $value = time() + MONTH_IN_SECONDS + DAY_IN_SECONDS;
             } elseif (
                 $field instanceof EE_Enum_Integer_Field ||
                 $field instanceof EE_Enum_Text_Field ||
@@ -924,7 +936,7 @@ class EE_UnitTestCase extends WP_UnitTestCase
             ) {
                 $value = $auto_made_thing_seed;
             } elseif ($field instanceof EE_Primary_Key_String_Field) {
-                $value = "$auto_made_thing_seed";
+                $value = (string) $auto_made_thing_seed;
             } elseif ($field instanceof EE_Email_Field) {
                 $value = $auto_made_thing_seed . 'ee@ee' . $auto_made_thing_seed . '.dev';
             } elseif ($field instanceof EE_Text_Field_Base) {
@@ -1035,18 +1047,19 @@ class EE_UnitTestCase extends WP_UnitTestCase
      * registrations, tickets, datetimes, events, attendees, questions, answers, etc).
      *
      * @param array $options         {
-     * 	@type int    $ticket_types    the number of different ticket types in this transaction. Default 1
+     * 	@type int    $ticket_types/$tickets    the number of different ticket types in this transaction. Default 1
      * 	@type int    $taxable_tickets how many of those ticket types should be taxable. Default EE_INF
+     * @type int fixed_ticket_price_modifiers the number of fixed ticket price modifiers to use on the tickets. Defaults to 1.
+     * @type string $reg_status the status of the transaction's registration. Defaults to "RAP"
+     * @type boolean $setup_reg whether to add a registration or not onto the transaction. Defaults to true
+     * @type int $tkt_qty the number of tickest available for purchase that the transaction is for
+     * @type string/int/Datetime $timestamp to use on the transaction and registration and payments etc
      * }
      * @return EE_Transaction
      * @throws \EE_Error
      */
     protected function new_typical_transaction($options = array())
     {
-        /** @var EE_Transaction $txn */
-        $txn = $this->new_model_obj_with_dependencies('Transaction', array('TXN_paid' => 0));
-        $total_line_item = EEH_Line_Item::create_total_line_item($txn->ID());
-        $total_line_item->save_this_and_descendants_to_txn($txn->ID());
         $ticket_types = isset($options['ticket_types'])
             ? $options['ticket_types']
             : $ticket_types = 1;
@@ -1068,6 +1081,19 @@ class EE_UnitTestCase extends WP_UnitTestCase
         $ticket_types = isset($options['tickets'])
             ? count($options['tickets'])
             : $ticket_types;
+        $timestamp = isset($options['timestamp'])
+            ? $options['timestamp']
+            : current_time('timestamp');
+        /** @var EE_Transaction $txn */
+        $txn = $this->new_model_obj_with_dependencies(
+            'Transaction',
+            array(
+                'TXN_paid' => 0,
+                'TXN_timestamp' => $timestamp
+            )
+        );
+        $total_line_item = EEH_Line_Item::create_total_line_item($txn->ID());
+        $total_line_item->save_this_and_descendants_to_txn($txn->ID());
         $taxes = EEM_Price::instance()->get_all_prices_that_are_taxes();
         for ($i = 1; $i <= $ticket_types; $i++) {
             /** @var EE_Ticket $ticket */
@@ -1076,9 +1102,14 @@ class EE_UnitTestCase extends WP_UnitTestCase
                 $reg_final_price = $ticket->price();
                 $datetime = $ticket->first_datetime();
             } else {
+
                 $ticket = $this->new_model_obj_with_dependencies(
                     'Ticket',
-                    array('TKT_price' => $i * 10, 'TKT_taxable' => $taxable_tickets-- > 0 ? true : false)
+                    array(
+                        'TKT_price' => $i * 10,
+                        'TKT_taxable' => $taxable_tickets-- > 0 ? true : false,
+                        'TKT_reserved' => $setup_reg && $reg_status === EEM_Registration::status_id_pending_payment ? 1 : 0
+                    )
                 );
                 $sum_of_sub_prices = 0;
                 for ($j = 1; $j <= $fixed_ticket_price_modifiers; $j++) {
@@ -1121,7 +1152,8 @@ class EE_UnitTestCase extends WP_UnitTestCase
                         'EVT_ID'          => $datetime->get('EVT_ID'),
                         'REG_count'       => 1,
                         'REG_group_size'  => 1,
-                        'REG_final_price' => $reg_final_price
+                        'REG_final_price' => $reg_final_price,
+                        'REG_date' => $timestamp
                     )
                 );
             }
@@ -1160,6 +1192,13 @@ class EE_UnitTestCase extends WP_UnitTestCase
         $ticket_args['TKT_taxable'] = isset($options['TKT_taxable'])
             ? filter_var($options['TKT_taxable'], FILTER_VALIDATE_BOOLEAN)
             : true;
+        //  make sure ticket start and end dates are set else they will default to NOW !!!
+        $ticket_args['TKT_start_date'] = isset($options['TKT_start_date'])
+            ? $options['TKT_start_date']
+            : time() + MONTH_IN_SECONDS;
+        $ticket_args['TKT_end_date'] = isset($options['TKT_end_date'])
+            ? $options['TKT_end_date']
+            : time() + MONTH_IN_SECONDS + DAY_IN_SECONDS;
         // now dump any other elements that came from the incoming options that are not ticket properties
         $ticket_args = array_intersect_key(
             $ticket_args,
@@ -1237,7 +1276,14 @@ class EE_UnitTestCase extends WP_UnitTestCase
             $datetimes = isset($options['datetimes']) ? $options['datetimes'] : 1;
             $event = $this->new_model_obj_with_dependencies('Event', array('EVT_wp_user' => $current_user->ID));
             for ($i = 0; $i <= $datetimes; $i++) {
-                $ddt = $this->new_model_obj_with_dependencies('Datetime', array('EVT_ID' => $event->ID()));
+                $ddt = $this->new_model_obj_with_dependencies(
+                    'Datetime',
+                    array(
+                        'EVT_ID' => $event->ID(),
+                        'DTT_EVT_start' => time() + MONTH_IN_SECONDS,
+                        'DTT_EVT_end'   => time() + MONTH_IN_SECONDS + DAY_IN_SECONDS,
+                    )
+                );
                 $ticket->_add_relation_to($ddt, 'Datetime');
                 $this->assertArrayContains($ddt, $ticket->datetimes());
             }
@@ -1281,17 +1327,7 @@ class EE_UnitTestCase extends WP_UnitTestCase
      */
     public function simulate_x_number_ticket_sales(EE_ticket $ticket, $qty = 1)
     {
-        $ticket->increase_sold($qty);
-        $ticket->save();
-        $datetimes = $ticket->datetimes();
-        if (is_array($datetimes)) {
-            foreach ($datetimes as $datetime) {
-                if ($datetime instanceof EE_Datetime) {
-                    $datetime->increase_sold($qty);
-                    $datetime->save();
-                }
-            }
-        }
+        $ticket->increaseSold($qty);
     }
 
 
@@ -1303,17 +1339,7 @@ class EE_UnitTestCase extends WP_UnitTestCase
      */
     public function reverse_x_number_ticket_sales(EE_ticket $ticket, $qty = 1)
     {
-        $ticket->decrease_sold($qty);
-        $ticket->save();
-        $datetimes = $ticket->datetimes();
-        if (is_array($datetimes)) {
-            foreach ($datetimes as $datetime) {
-                if ($datetime instanceof EE_Datetime) {
-                    $datetime->decrease_sold($qty);
-                    $datetime->save();
-                }
-            }
-        }
+        $ticket->decreaseSold($qty);
     }
 
 
@@ -1338,17 +1364,119 @@ class EE_UnitTestCase extends WP_UnitTestCase
      * This should call the appropriate method regardless of version
      *
      * @param string $exception
+     * @param null   $code
      * @throws \PHPUnit\Framework\Exception
      */
-    public function setExceptionExpected($exception)
+    public function setExceptionExpected($exception, $code = null)
     {
         if (method_exists($this, 'expectException')) {
             parent::expectException($exception);
         } elseif (method_exists($this, 'setExpectedException')) {
             $this->setExpectedException($exception);
         }
+        if ($code !== null && method_exists($this, 'expectExceptionCode')) {
+            parent::expectExceptionCode($code);
+        }
     }
 
 
+    protected function loadShortcodesManagerAndShortcodes()
+    {
+        // load, register, and add shortcodes the new way
+        LoaderFactory::getLoader()->getShared(
+            'EventEspresso\core\services\shortcodes\ShortcodesManager',
+            array(
+                // and the old way, but we'll put it under control of the new system
+                EE_Config::getLegacyShortcodesManager()
+            )
+        );
+        do_action('AHEE__EE_System__register_shortcodes_modules_and_widgets');
+        do_action('AHEE__EE_System__core_loaded_and_ready');
+        global $wp_query;
+        do_action('parse_query', $wp_query);
+        require_once EE_PUBLIC . 'template_tags.php';
+    }
 
+
+    /**
+     * @param string   $hook_name
+     * @param callable $callback
+     * @param bool|int $equals
+     * @param bool     $is_action
+     * @since 4.10.7.p
+     */
+    protected function assertHookIsSet($hook_name, callable $callback, $equals, $is_action = true)
+    {
+        $has_hook = $is_action ? 'has_action' : 'has_filter';
+        $actual = $has_hook($hook_name, $callback);
+        if ($actual === false) {
+            // produces error message like:
+            // The `EE_Admin::filter_plugin_actions()` callback is NOT registered to the "plugin_action_links" action when it should be.
+            $message = sprintf(
+                'The `%1$s` callback is NOT registered to the "%2$s" %3$s when it should be.',
+                is_array($callback) ? get_class($callback[0]) . "::{$callback[1]}()" : $callback,
+                $hook_name,
+                $is_action ? 'action' : 'filter'
+            );
+        } else {
+            // produces error message like:
+            // The `EE_Admin::admin_init()` callback is registered to the "admin_init" action
+            // at priority 100 when it should be registered at priority 10.
+            $message = sprintf(
+                'The `%1$s` callback is registered to the "%2$s" %3$s at priority %4$s when it should be registered at priority %5$s.',
+                is_array($callback) ? get_class($callback[0]) . "::{$callback[1]}()" : $callback,
+                $hook_name,
+                $is_action ? 'action' : 'filter',
+                $actual,
+                $equals
+            );
+        }
+        $this->assertEquals($equals, $actual, $message);
+    }
+
+
+    /**
+     * @param string   $action
+     * @param callable $callback
+     * @param bool|int $priority
+     * @since 4.10.7.p
+     */
+    protected function assertActionSet($action, callable $callback, $priority = true)
+    {
+        $this->assertHookIsSet($action, $callback, $priority);
+    }
+
+
+    /**
+     * @param string   $action
+     * @param callable $callback
+     * @since 4.10.7.p
+     */
+    protected function assertActionNotSet($action, callable $callback)
+    {
+        $this->assertHookIsSet($action, $callback, false);
+    }
+
+
+    /**
+     * @param string   $filter
+     * @param callable $callback
+     * @param bool|int $priority
+     * @since 4.10.7.p
+     */
+    protected function assertFilterSet($filter, callable $callback, $priority = true)
+    {
+        $this->assertHookIsSet($filter, $callback, $priority, false);
+    }
+
+
+    /**
+     * @param string   $filter
+     * @param callable $callback
+     * @since 4.10.7.p
+     */
+    protected function assertFilterNotSet($filter, callable $callback)
+    {
+        $this->assertHookIsSet($filter, $callback, false, false);
+    }
 }

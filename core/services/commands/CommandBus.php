@@ -6,12 +6,6 @@ use EventEspresso\core\exceptions\InvalidDataTypeException;
 use EventEspresso\core\services\commands\middleware\CommandBusMiddlewareInterface;
 use EventEspresso\core\services\commands\middleware\InvalidCommandBusMiddlewareException;
 
-if (! defined('EVENT_ESPRESSO_VERSION')) {
-    exit('No direct script access allowed');
-}
-
-
-
 /**
  * Class CommandBus
  * Routes Command objects to their respective CommandHandlers,
@@ -51,7 +45,6 @@ class CommandBus implements CommandBusInterface
     private $command_bus_middleware;
 
 
-
     /**
      * CommandBus constructor
      *
@@ -69,7 +62,6 @@ class CommandBus implements CommandBusInterface
     }
 
 
-
     /**
      * @return CommandHandlerManagerInterface
      */
@@ -77,7 +69,6 @@ class CommandBus implements CommandBusInterface
     {
         return $this->command_handler_manager;
     }
-
 
 
     /**
@@ -95,25 +86,22 @@ class CommandBus implements CommandBusInterface
         // that will get run at the end of our middleware stack
         // can't pass $this to a Closure, so use a named variable
         $command_bus = $this;
-        $middleware = function ($command) use ($command_bus) {
+        $middleware = static function ($command) use ($command_bus) {
             return $command_bus->getCommandHandlerManager()
-                ->getCommandHandler($command, $command_bus)
-                ->handle($command);
+                               ->getCommandHandler($command, $command_bus)
+                               ->verify($command)
+                               ->handle($command);
         };
         // now build the rest of the middleware stack
         while ($command_bus_middleware = array_pop($this->command_bus_middleware)) {
             if (! $command_bus_middleware instanceof CommandBusMiddlewareInterface) {
                 throw new InvalidCommandBusMiddlewareException($command_bus_middleware);
             }
-            $middleware = function ($command) use ($command_bus_middleware, $middleware) {
+            $middleware = static function ($command) use ($command_bus_middleware, $middleware) {
                 return $command_bus_middleware->handle($command, $middleware);
             };
         }
         // and finally, pass the command into the stack and return the results
         return $middleware($command);
     }
-
-
 }
-// End of file CommandBus.php
-// Location: core/services/commands/CommandBus.php

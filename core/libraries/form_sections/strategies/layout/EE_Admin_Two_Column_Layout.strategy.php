@@ -1,7 +1,4 @@
 <?php
-defined('EVENT_ESPRESSO_VERSION') || exit;
-
-
 
 /**
  * Like the standard two-column form section layout, but this one adds css classes
@@ -20,24 +17,6 @@ class EE_Admin_Two_Column_Layout extends EE_Two_Column_Layout
     {
         $this->_form_section->set_html_class($this->_form_section->html_class() . ' form-table');
         return parent::layout_form_begin($additional_args);
-    }
-
-
-
-    /**
-     * Lays out a row for the subsection
-     *
-     * @param EE_Form_Section_Proper $form_section
-     * @return string
-     */
-    public function layout_subsection($form_section)
-    {
-        if ($form_section instanceof EE_Form_Section_Proper
-            || $form_section instanceof EE_Form_Section_HTML
-        ) {
-            return EEH_HTML::no_row($form_section->get_html());
-        }
-        return '';
     }
 
 
@@ -69,7 +48,7 @@ class EE_Admin_Two_Column_Layout extends EE_Two_Column_Layout
         $input_html .= $input->get_html_for_help() !== ''
             ? EEH_HTML::nl() . $input->get_html_for_help()
             : '';
-        //overriding parent to add wp admin specific things.
+        // overriding parent to add wp admin specific things.
         $html = '';
         if ($input instanceof EE_Hidden_Input) {
             $html .= EEH_HTML::no_row($input->get_html_for_input());

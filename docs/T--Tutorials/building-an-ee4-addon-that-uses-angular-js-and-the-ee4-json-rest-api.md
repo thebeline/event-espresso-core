@@ -65,7 +65,7 @@ And we should also have an `EE_Rest_Api_Client.class.php` file which actually re
  * @package			Event Espresso
  * @subpackage		eea-rest-api-client
  * @author			    Brent Christensen
- * @ version		 	$VID:$
+ * 
  *
  * ------------------------------------------------------------------------
  */
@@ -136,7 +136,7 @@ This mostly just informs EE core about our shortcode. Here's the shortcode's cod
  * @package			Event Espresso
  * @subpackage		eea-rest-api-client
  * @author 				Brent Christensen
- * @ version		 	$VID:$
+ * 
  *
  * ------------------------------------------------------------------------
  */
@@ -280,7 +280,7 @@ Once the page is loaded, this javascript queries the EE4 REST API for 5 events a
 
 ## Using the Shortcode
 
-We are done coding. Now just create a page or post and use the shortcode `[REST_API_CLIENT]` on it to see the fruit of your labours. [Here is a page where we are using the plugin](http://dev2.eventespresso.com/rest-api-client-page/).
+We are done coding. Now just create a page or post and use the shortcode `[REST_API_CLIENT]` on it to see the fruit of your labours. 
 
 ## Conclusion
 

@@ -1,4 +1,9 @@
 <?php
+
+use EventEspresso\core\exceptions\InvalidDataTypeException;
+use EventEspresso\core\exceptions\InvalidInterfaceException;
+use PHPUnit\Framework\Exception;
+
 if ( ! defined('EVENT_ESPRESSO_VERSION')) {
     exit('No direct script access allowed');
 }
@@ -58,6 +63,7 @@ class EEM_Base_Test extends EE_UnitTestCase
 
     /**
      * Verifies that for each model, the tables it claims to require have been installed
+     * @doesNotPerformAssertions
      */
     public function test_model_tables_exist()
     {
@@ -474,18 +480,17 @@ class EEM_Base_Test extends EE_UnitTestCase
         $datetime->setTimestamp(
             EEM_Datetime::instance()->current_time_for_query('DTT_EVT_start', true)
         );
-        $this->assertEquals(
-            Datetime::createFromFormat(
-                'Y-m-d H:i:s',
-                current_time('mysql')
-            ),
-            $datetime
+        $this->assertDateWithinOneMinute(
+            time(),
+            $datetime->format('U'),
+            'U'
         );
     }
 
 
 
     /**
+     * @group 341
      * @since 4.6.x
      */
     public function test_convert_datetime_for_query()
@@ -511,30 +516,49 @@ class EEM_Base_Test extends EE_UnitTestCase
             $converted = EEM_Datetime::instance()
                                      ->convert_datetime_for_query('DTT_EVT_start', $now->format('F j, Y g:i a'),
                                          'F j, Y g:i a', 'UTC');
-            $this->assertEquals($now->format('F j, Y g:i a'), $converted->format('F j, Y g:i a'),
-                sprintf('Timezone tested: %s', $timezone));
+            $this->assertDateWithinOneMinute(
+                $now->format('F j, Y g:i a'),
+                $converted->format('F j, Y g:i a'),
+                'F j, Y g:i a',
+                sprintf('Dates not within one minute for timezone: %s', $timezone)
+            );
             //test getting correctly formatted string for different incoming format in same timezone.
             $converted = EEM_Datetime::instance()
                                      ->convert_datetime_for_query('DTT_EVT_start', $now->format('Y-m-d H:i:s'),
                                          'Y-m-d H:i:s', 'UTC');
-            $this->assertEquals($now->format('F j, Y g:i a'), $converted->format('F j, Y g:i a'),
-                sprintf('Timezone tested: %s', $timezone));
+            $this->assertDateWithinOneMinute(
+                $now->format('F j, Y g:i a'),
+                $converted->format('F j, Y g:i a'),
+                'F j, Y g:i a',
+                sprintf('Dates not within one minute for timezone tested: %s', $timezone)
+            );
             //test getting correctly formatted string for different incoming format in different incoming timezone.
             $converted = EEM_Datetime::instance()
                                      ->convert_datetime_for_query('DTT_EVT_start', $timezoneTest->format('Y-m-d H:i:s'),
                                          'Y-m-d H:i:s', 'America/Vancouver');
-            $this->assertEquals($now->format('F j, Y g:i a'), $converted->format('F j, Y g:i a'),
-                sprintf('Timezone tested: %s', $timezone));
+            $this->assertDateWithinOneMinute(
+                $now->format('F j, Y g:i a'),
+                $converted->format('F j, Y g:i a'),
+                'F j, Y g:i a',
+                sprintf('Dates not within one minute for timezone: %s', $timezone));
             //test getting correctly formatted string for unix_timestamp format.
             $converted = EEM_Datetime::instance()->convert_datetime_for_query('DTT_EVT_start', time(), 'U');
-            $this->assertEquals($now->format('F j, Y g:i a'), $converted->format('F j, Y g:i a'),
-                sprintf('Timezone tested: %s', $timezone));
+            $this->assertDateWithinOneMinute(
+                $now->format('F j, Y g:i a'),
+                $converted->format('F j, Y g:i a'),
+                'F j, Y g:i a',
+                sprintf('Timezone tested: %s', $timezone)
+            );
             //test getting correctly formatted string for current_time('mysql') format.
             $converted = EEM_Datetime::instance()
                                      ->convert_datetime_for_query('DTT_EVT_start', current_time('mysql'),
                                          'Y-m-d H:i:s');
-            $this->assertEquals($now->format('F j, Y g:i a'), $converted->format('F j, Y g:i a'),
-                sprintf('Timezone tested: %s', $timezone));
+            $this->assertDateWithinOneMinute(
+                $now->format('F j, Y g:i a'),
+                $converted->format('F j, Y g:i a'),
+                'F j, Y g:i a',
+                sprintf('Dates not within one minute for timezone: %s', $timezone)
+            );
             //repeat above tests when internals on EE_Datetime_Field have been modified by new
             //datetime creation.
             $this->factory->datetime->create(array(
@@ -546,29 +570,49 @@ class EEM_Base_Test extends EE_UnitTestCase
             $converted = EEM_Datetime::instance()
                                      ->convert_datetime_for_query('DTT_EVT_start', $timezoneTest->format('U'), 'U',
                                          'America/Vancouver');
-            $this->assertEquals($timezoneTest->format('d/m/Y h:i a'), $converted->format('d/m/Y h:i a'),
-                sprintf('Timezone tested: %s', $timezone));
+            $this->assertDateWithinOneMinute(
+                $timezoneTest->format('d/m/Y h:i a'),
+                $converted->format('d/m/Y h:i a'),
+                'd/m/Y h:i a',
+                sprintf('Dates not within one minute for timezone: %s', $timezone)
+            );
             //test getting correctly formatted string for different incoming format in same timezone.
             $converted = EEM_Datetime::instance()
                                      ->convert_datetime_for_query('DTT_EVT_start', $timezoneTest->format('Y-m-d H:i:s'),
                                          'Y-m-d H:i:s', 'America/Vancouver');
-            $this->assertEquals($timezoneTest->format('d/m/Y h:i a'), $converted->format('d/m/Y h:i a'),
-                sprintf('Timezone tested: %s', $timezone));
+            $this->assertDateWithinOneMinute(
+                $timezoneTest->format('d/m/Y h:i a'),
+                $converted->format('d/m/Y h:i a'),
+                'd/m/Y h:i a',
+                sprintf('Dates not within one minute for timezone tested: %s', $timezone)
+            );
             //test getting correctly formatted string for different incoming format in different incoming timezone.
             $converted = EEM_Datetime::instance()
                                      ->convert_datetime_for_query('DTT_EVT_start', $now->format('U'), 'U', 'UTC');
-            $this->assertEquals($timezoneTest->format('d/m/Y h:i a'), $converted->format('d/m/Y h:i a'),
-                sprintf('Timezone tested: %s', $timezone));
+            $this->assertDateWithinOneMinute(
+                $timezoneTest->format('d/m/Y h:i a'),
+                $converted->format('d/m/Y h:i a'),
+                'd/m/Y h:i a',
+                sprintf('Dates not within one minute for timezone tested: %s', $timezone)
+            );
             //test getting correctly formatted string for time() format.
             $converted = EEM_Datetime::instance()->convert_datetime_for_query('DTT_EVT_start', time(), 'U');
-            $this->assertEquals($timezoneTest->format('d/m/Y h:i a'), $converted->format('d/m/Y h:i a'),
-                sprintf('Timezone tested: %s', $timezone));
+            $this->assertDateWithinOneMinute(
+                $timezoneTest->format('d/m/Y h:i a'),
+                $converted->format('d/m/Y h:i a'),
+                'd/m/Y h:i a',
+                sprintf('Dates not within one minute for timezone tested: %s', $timezone)
+            );
             //test getting correctly formatted string for current_time('mysql') format.
             $converted = EEM_Datetime::instance()
                                      ->convert_datetime_for_query('DTT_EVT_start', current_time('mysql'),
                                          'Y-m-d H:i:s');
-            $this->assertEquals($timezoneTest->format('d/m/Y h:i a'), $converted->format('d/m/Y h:i a'),
-                sprintf('Timezone tested: %s', $timezone));
+            $this->assertDateWithinOneMinute(
+                $timezoneTest->format('d/m/Y h:i a'),
+                $converted->format('d/m/Y h:i a'),
+                'd/m/Y h:i a',
+                sprintf('Dates not within one minute for timezone tested: %s', $timezone)
+            );
         }
         update_option('timezone_string', $original_timezone);
         update_option('gmt_offset', $original_offset);
@@ -1136,7 +1180,8 @@ class EEM_Base_Test extends EE_UnitTestCase
     /**
      * @group 9566
      */
-    public function test_is_logic_query_param_key(){
+    public function test_is_logic_query_param_key()
+    {
         $this->assertTrue( EEM_Answer::instance()->is_logic_query_param_key( 'OR' ) );
         $this->assertTrue( EEM_Answer::instance()->is_logic_query_param_key( 'NOT*' ) );
         $this->assertTrue( EEM_Answer::instance()->is_logic_query_param_key( 'AND*other-condition' ) );
@@ -1146,6 +1191,35 @@ class EEM_Base_Test extends EE_UnitTestCase
 
     }
 
+
+    /**
+     * @group customselects
+     * @throws EE_Error
+     * @throws InvalidArgumentException
+     * @throws ReflectionException
+     * @throws InvalidDataTypeException
+     * @throws InvalidInterfaceException
+     * @throws Exception
+     */
+    public function testExtraSelects()
+    {
+        //setup some data in the db
+        $attendee = $this->factory->attendee->create();
+        $this->factory->registration->create_many(3, array('ATT_ID' => $attendee->ID()));
+        EEM_Attendee::reset();
+        EEM_Registration::reset();
+        $attendees = EEM_Attendee::instance()->get_all(
+            array(
+                'extra_selects' => array(
+                    'registration_count' => array('Registration.REG_ID', 'count', '%d')
+                )
+            )
+        );
+        $this->assertCount(1, $attendees);
+        $attendee = reset($attendees);
+        $this->assertInstanceOf('EE_Attendee', $attendee);
+        $this->assertEquals(3, $attendee->getCustomSelect('registration_count'));
+    }
 }
 
 // End of file EEM_Base_Test.php

@@ -1,16 +1,14 @@
 <?php
+
 namespace EventEspresso\core\services\commands\registration;
 
+use EE_Error;
 use EventEspresso\core\domain\services\registration\CreateRegistrationService;
 use EventEspresso\core\exceptions\InvalidEntityException;
+use EventEspresso\core\exceptions\UnexpectedEntityException;
 use EventEspresso\core\services\commands\CommandHandler;
 use EventEspresso\core\services\commands\CommandInterface;
-
-if ( ! defined('EVENT_ESPRESSO_VERSION')) {
-    exit('No direct script access allowed');
-}
-
-
+use OutOfRangeException;
 
 /**
  * Class CreateRegistrationCommandHandler
@@ -29,7 +27,6 @@ class CreateRegistrationCommandHandler extends CommandHandler
     private $registration_service;
 
 
-
     /**
      * Command constructor
      *
@@ -41,21 +38,16 @@ class CreateRegistrationCommandHandler extends CommandHandler
     }
 
 
-
     /**
-     * @param  CommandInterface $command
+     * @param  CommandInterface|CreateRegistrationCommand $command
      * @return mixed
-     * @throws \OutOfRangeException
-     * @throws \EventEspresso\core\exceptions\UnexpectedEntityException
-     * @throws \EE_Error
-     * @throws \EventEspresso\core\exceptions\InvalidEntityException
+     * @throws OutOfRangeException
+     * @throws UnexpectedEntityException
+     * @throws EE_Error
+     * @throws InvalidEntityException
      */
     public function handle(CommandInterface $command)
     {
-        /** @var CreateRegistrationCommand $command */
-        if ( ! $command instanceof CreateRegistrationCommand) {
-            throw new InvalidEntityException(get_class($command), 'CreateRegistrationCommand');
-        }
         // now create a new registration for the ticket
         return $this->registration_service->create(
             $command->ticket()->get_related_event(),
@@ -67,9 +59,4 @@ class CreateRegistrationCommandHandler extends CommandHandler
             $command->regStatus()
         );
     }
-
-
-
 }
-// End of file CreateRegistrationCommandHandler.php
-// Location: /CreateRegistrationCommandHandler.php

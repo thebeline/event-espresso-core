@@ -2,20 +2,15 @@
 
 namespace EventEspresso\core\domain\entities;
 
-defined('EVENT_ESPRESSO_VERSION') || exit;
-
-
+use EventEspresso\core\domain\entities\contexts\ContextInterface;
 
 /**
  * Class Context
- * Simple DTO for conveying the background details about why some other logic is being performed,
- * that can assist with the decision making process or simply enhance logging.
+ * NAMESPACE MOVED : PLZ USE : \EventEspresso\core\domain\entities\contexts\Context
  *
- * @package EventEspresso\core\domain\entities
- * @author  Brent Christensen
- * @since   4.9.46.rc.076
+ * @deprecated 4.9.54
  */
-class Context
+class Context implements ContextInterface
 {
 
     /**
@@ -76,6 +71,4 @@ class Context
     {
         $this->description = sanitize_text_field($description);
     }
-
 }
-// Location: Context.php

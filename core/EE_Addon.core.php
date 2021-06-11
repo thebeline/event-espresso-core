@@ -1,6 +1,11 @@
 <?php
 
-defined('EVENT_ESPRESSO_VERSION') || exit('No direct access allowed.');
+use EventEspresso\core\domain\DomainInterface;
+use EventEspresso\core\domain\RequiresDependencyMapInterface;
+use EventEspresso\core\domain\RequiresDomainInterface;
+use EventEspresso\core\exceptions\InvalidDataTypeException;
+use EventEspresso\core\exceptions\InvalidInterfaceException;
+use EventEspresso\core\services\loaders\LoaderFactory;
 
 /**
  * Class EE_Addon
@@ -10,7 +15,7 @@ defined('EVENT_ESPRESSO_VERSION') || exit('No direct access allowed.');
  * @subpackage            core
  * @author                Michael Nelson, Brent Christensen
  */
-abstract class EE_Addon extends EE_Configurable
+abstract class EE_Addon extends EE_Configurable implements RequiresDependencyMapInterface, RequiresDomainInterface
 {
 
 
@@ -76,7 +81,6 @@ abstract class EE_Addon extends EE_Configurable
     protected $_plugins_page_row = array();
 
 
-
     /**
      *    filepath to the main file, which can be used for register_activation_hook, register_deactivation_hook, etc.
      *
@@ -84,13 +88,74 @@ abstract class EE_Addon extends EE_Configurable
      */
     protected $_main_plugin_file;
 
+    /**
+     *    This is the slug used to identify this add-on within the plugin update engine.
+     *
+     * @type string
+     */
+    protected $pue_slug;
+
 
     /**
-     *    class constructor
+     * @var EE_Dependency_Map $dependency_map
      */
-    public function __construct()
+    private $dependency_map;
+
+
+    /**
+     * @var DomainInterface $domain
+     */
+    private $domain;
+
+
+    /**
+     * @param EE_Dependency_Map $dependency_map [optional]
+     * @param DomainInterface   $domain         [optional]
+     */
+    public function __construct(EE_Dependency_Map $dependency_map = null, DomainInterface $domain = null)
     {
+        if ($dependency_map instanceof EE_Dependency_Map) {
+            $this->setDependencyMap($dependency_map);
+        }
+        if ($domain instanceof DomainInterface) {
+            $this->setDomain($domain);
+        }
         add_action('AHEE__EE_System__load_controllers__load_admin_controllers', array($this, 'admin_init'));
+    }
+
+
+    /**
+     * @param EE_Dependency_Map $dependency_map
+     */
+    public function setDependencyMap($dependency_map)
+    {
+        $this->dependency_map = $dependency_map;
+    }
+
+
+    /**
+     * @return EE_Dependency_Map
+     */
+    public function dependencyMap()
+    {
+        return $this->dependency_map;
+    }
+
+
+    /**
+     * @param DomainInterface $domain
+     */
+    public function setDomain(DomainInterface $domain)
+    {
+        $this->domain = $domain;
+    }
+
+    /**
+     * @return DomainInterface
+     */
+    public function domain()
+    {
+        return $this->domain;
     }
 
 
@@ -282,6 +347,7 @@ abstract class EE_Addon extends EE_Configurable
 
     /**
      * Called when the registered deactivation hook for this addon fires.
+     *
      * @throws EE_Error
      */
     public function deactivation()
@@ -289,7 +355,7 @@ abstract class EE_Addon extends EE_Configurable
         $classname = get_class($this);
         do_action("AHEE__{$classname}__deactivation");
         do_action('AHEE__EE_Addon__deactivation', $this);
-        //check if the site no longer needs to be in maintenance mode
+        // check if the site no longer needs to be in maintenance mode
         EE_Register_Addon::deregister($this->name());
         EE_Maintenance_Mode::instance()->set_maintenance_mode_if_db_old();
     }
@@ -304,14 +370,17 @@ abstract class EE_Addon extends EE_Configurable
      *                               This is a resource-intensive job so we prefer to only do it when necessary
      * @return void
      * @throws \EE_Error
+     * @throws InvalidInterfaceException
+     * @throws InvalidDataTypeException
+     * @throws InvalidArgumentException
      */
     public function initialize_db_if_no_migrations_required($verify_schema = true)
     {
         if ($verify_schema === '') {
-            //wp core bug imo: if no args are passed to `do_action('some_hook_name')` besides the hook's name
-            //(ie, no 2nd or 3rd arguments), instead of calling the registered callbacks with no arguments, it
-            //calls them with an argument of an empty string (ie ""), which evaluates to false
-            //so we need to treat the empty string as if nothing had been passed, and should instead use the default
+            // wp core bug imo: if no args are passed to `do_action('some_hook_name')` besides the hook's name
+            // (ie, no 2nd or 3rd arguments), instead of calling the registered callbacks with no arguments, it
+            // calls them with an argument of an empty string (ie ""), which evaluates to false
+            // so we need to treat the empty string as if nothing had been passed, and should instead use the default
             $verify_schema = true;
         }
         if (EE_Maintenance_Mode::instance()->level() !== EE_Maintenance_Mode::level_2_complete_maintenance) {
@@ -319,7 +388,7 @@ abstract class EE_Addon extends EE_Configurable
                 $this->initialize_db();
             }
             $this->initialize_default_data();
-            //@todo: this will probably need to be adjusted in 4.4 as the array changed formats I believe
+            // @todo: this will probably need to be adjusted in 4.4 as the array changed formats I believe
             EE_Data_Migration_Manager::instance()->update_current_database_state_to(
                 array(
                     'slug'    => $this->name(),
@@ -333,14 +402,18 @@ abstract class EE_Addon extends EE_Configurable
              * other data needs to be verified)
              */
             EEH_Activation::initialize_db_content();
-            update_option('ee_flush_rewrite_rules', true);
-            //in case there are lots of addons being activated at once, let's force garbage collection
-            //to help avoid memory limit errors
-            //EEH_Debug_Tools::instance()->measure_memory( 'db content initialized for ' . get_class( $this), true );
+            /** @var EventEspresso\core\domain\services\custom_post_types\RewriteRules $rewrite_rules */
+            $rewrite_rules = LoaderFactory::getLoader()->getShared(
+                'EventEspresso\core\domain\services\custom_post_types\RewriteRules'
+            );
+            $rewrite_rules->flushRewriteRules();
+            // in case there are lots of addons being activated at once, let's force garbage collection
+            // to help avoid memory limit errors
+            // EEH_Debug_Tools::instance()->measure_memory( 'db content initialized for ' . get_class( $this), true );
             gc_collect_cycles();
         } else {
-            //ask the data migration manager to init this addon's data
-            //when migrations are finished because we can't do it now
+            // ask the data migration manager to init this addon's data
+            // when migrations are finished because we can't do it now
             EE_Data_Migration_Manager::instance()->enqueue_db_initialization_for($this->name());
         }
     }
@@ -354,7 +427,7 @@ abstract class EE_Addon extends EE_Configurable
      */
     public function initialize_db()
     {
-        //find the migration script that sets the database to be compatible with the code
+        // find the migration script that sets the database to be compatible with the code
         $current_dms_name = EE_Data_Migration_Manager::instance()->get_most_up_to_date_dms($this->name());
         if ($current_dms_name) {
             $current_data_migration_script = EE_Registry::instance()->load_dms($current_dms_name);
@@ -367,7 +440,7 @@ abstract class EE_Addon extends EE_Configurable
                 }
             }
         }
-        //if not DMS was found that should be ok. This addon just doesn't require any database changes
+        // if not DMS was found that should be ok. This addon just doesn't require any database changes
         EE_Data_Migration_Manager::instance()->update_current_database_state_to(
             array(
                 'slug'    => $this->name(),
@@ -397,8 +470,8 @@ abstract class EE_Addon extends EE_Configurable
          * @param EE_Addon $addon the addon that called this
          */
         do_action('AHEE__EE_Addon__initialize_default_data__begin', $this);
-        //override to insert default data. It is safe to use the models here
-        //because the site should not be in maintenance mode
+        // override to insert default data. It is safe to use the models here
+        // because the site should not be in maintenance mode
     }
 
 
@@ -415,7 +488,7 @@ abstract class EE_Addon extends EE_Configurable
         do_action("AHEE__{$classname}__upgrade");
         do_action('AHEE__EE_Addon__upgrade', $this);
         EE_Maintenance_Mode::instance()->set_maintenance_mode_if_db_old();
-        //also it's possible there is new default data that needs to be added
+        // also it's possible there is new default data that needs to be added
         add_action(
             'AHEE__EE_System__perform_activations_upgrades_and_migrations',
             array($this, 'initialize_db_if_no_migrations_required')
@@ -431,7 +504,7 @@ abstract class EE_Addon extends EE_Configurable
         $classname = get_class($this);
         do_action("AHEE__{$classname}__downgrade");
         do_action('AHEE__EE_Addon__downgrade', $this);
-        //it's possible there's old default data that needs to be double-checked
+        // it's possible there's old default data that needs to be double-checked
         add_action(
             'AHEE__EE_System__perform_activations_upgrades_and_migrations',
             array($this, 'initialize_db_if_no_migrations_required')
@@ -456,7 +529,7 @@ abstract class EE_Addon extends EE_Configurable
             ),
             '4.3.0.alpha.016'
         );
-        //let's just handle this on the next request, ok? right now we're just not really ready
+        // let's just handle this on the next request, ok? right now we're just not really ready
         return $this->set_activation_indicator_option();
     }
 
@@ -540,7 +613,6 @@ abstract class EE_Addon extends EE_Configurable
     public function detect_activation_or_upgrade()
     {
         $activation_history_for_addon = $this->get_activation_history();
-//		d($activation_history_for_addon);
         $request_type = EE_System::detect_req_type_given_activation_history(
             $activation_history_for_addon,
             $this->get_activation_indicator_option_name(),
@@ -575,7 +647,6 @@ abstract class EE_Addon extends EE_Configurable
                 break;
             case EE_System::req_type_normal:
             default:
-//				$this->_maybe_redirect_to_ee_about();
                 break;
         }
 
@@ -597,9 +668,8 @@ abstract class EE_Addon extends EE_Configurable
         if ($current_version_to_add === null) {
             $current_version_to_add = $this->version();
         }
-        $version_history[$current_version_to_add][] = date('Y-m-d H:i:s', time());
+        $version_history[ $current_version_to_add ][] = date('Y-m-d H:i:s', time());
         // resave
-//		echo "updating list of installed versions:".$this->get_activation_history_option_name();d($version_history);
         return update_option($this->get_activation_history_option_name(), $version_history);
     }
 
@@ -729,10 +799,10 @@ abstract class EE_Addon extends EE_Configurable
         $after_plugin_row = '';
         $plugins_page_row = $this->get_plugins_page_row();
         if (! empty($plugins_page_row) && $plugin_file === $this->plugin_basename()) {
-            $class            = $status ? 'active' : 'inactive';
-            $link_text        = isset($plugins_page_row['link_text']) ? $plugins_page_row['link_text'] : '';
-            $link_url         = isset($plugins_page_row['link_url']) ? $plugins_page_row['link_url'] : '';
-            $description      = isset($plugins_page_row['description'])
+            $class = $status ? 'active' : 'inactive';
+            $link_text = isset($plugins_page_row['link_text']) ? $plugins_page_row['link_text'] : '';
+            $link_url = isset($plugins_page_row['link_url']) ? $plugins_page_row['link_url'] : '';
+            $description = isset($plugins_page_row['description'])
                 ? $plugins_page_row['description']
                 : '';
             if (! empty($link_text) && ! empty($link_url) && ! empty($description)) {
@@ -779,9 +849,9 @@ abstract class EE_Addon extends EE_Configurable
                 $after_plugin_row .= '
 <p class="ee-addon-upsell-info-dv">
 	<a class="ee-button" href="' . $link_url . '">'
-                . $link_text
-                . ' &nbsp;<span class="dashicons dashicons-arrow-right-alt2" style="margin:0;"></span>'
-                . '</a>
+                                     . $link_text
+                                     . ' &nbsp;<span class="dashicons dashicons-arrow-right-alt2" style="margin:0;"></span>'
+                                     . '</a>
 </p>';
                 $after_plugin_row .= '</td>';
                 $after_plugin_row .= '<td class="ee-addon-upsell-info-desc-td column-description desc">';
@@ -820,5 +890,20 @@ abstract class EE_Addon extends EE_Configurable
     public function after_registration()
     {
         // cricket chirp... cricket chirp...
+    }
+
+    /**
+     * @return string
+     */
+    public function getPueSlug()
+    {
+        return $this->pue_slug;
+    }
+    /**
+     * @param string $pue_slug
+     */
+    public function setPueSlug($pue_slug)
+    {
+        $this->pue_slug = $pue_slug;
     }
 }

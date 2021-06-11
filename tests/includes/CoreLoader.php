@@ -12,6 +12,8 @@ class CoreLoader
 {
     public function init()
     {
+        echo "\nINITIALIZING EVENT ESPRESSO UNIT TESTS";
+        echo "\n--------------------------------------";
         $this->setConstants();
         $this->preLoadWPandEE();
         $this->loadWP();
@@ -23,6 +25,27 @@ class CoreLoader
             EVENT_ESPRESSO_UPLOAD_DIR . 'logs/benchmarking-master.html',  false
         );
     }
+
+
+    /**
+     * @param string $folder
+     * @return string|null
+     * @since 4.10.7.p
+     */
+    private function findWordpressTests($folder = '')
+    {
+        static $depth = 10;
+        echo ".";
+        if (file_exists($folder . '/includes/functions.php')) {
+            return $folder;
+        }
+        if ($depth > 0) {
+            $depth--;
+            return $this->findWordpressTests(dirname($folder));
+        }
+        return null;
+    }
+
 
     protected function setConstants()
     {
@@ -43,23 +66,12 @@ class CoreLoader
             if (file_exists($_tests_dir . '/includes/functions.php')) {
                 define('WP_TESTS_DIR', $_tests_dir);
             } else {
-                define(
-                    'WP_TESTS_DIR',
-                    dirname(
-                        dirname(
-                            dirname(
-                                dirname(
-                                    dirname(
-                                        dirname(
-                                            __DIR__
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    ) . '/tests/phpunit'
-                );
+                echo "\n\n Attempting to find WP_TESTS_DIR ";
+                $folder = $this->findWordpressTests(__DIR__);
+                define('WP_TESTS_DIR', $folder);
             }
+            echo "\nWP_TESTS_DIR: " . WP_TESTS_DIR;
+            echo "\nEE_TESTS_DIR: " . EE_TESTS_DIR . "\n\n";
             // define('EE_REST_API_DEBUG_MODE', true);
         }
     }
@@ -69,7 +81,7 @@ class CoreLoader
     {
         //if WordPress test suite isn't found then we can't do anything.
         if (! is_readable(WP_TESTS_DIR . '/includes/functions.php')) {
-            die("The WordPress PHPUnit test suite could not be found.\n");
+            die("The WordPress PHPUnit test suite could not be found at: " . WP_TESTS_DIR);
         }
         require_once WP_TESTS_DIR . '/includes/functions.php';
         require_once EE_PLUGIN_DIR . 'core/Psr4Autoloader.php';
@@ -90,7 +102,6 @@ class CoreLoader
         //make sure EE_session does not load
         tests_add_filter('FHEE_load_EE_Session', '__return_false');
         // and don't set cookies
-        tests_add_filter('FHEE__EE_Front_Controller____construct__set_test_cookie', '__return_false');
         tests_add_filter('FHEE__EE_Error__get_error__show_normal_exceptions', '__return_true');
         // we need to add these filters BEFORE the Registry is instantiated
         tests_add_filter(
@@ -103,7 +114,7 @@ class CoreLoader
         tests_add_filter(
             'FHEE__EE_Registry__load_core__core_paths',
             function ($core_paths = array()) {
-                $core_paths[] = EE_TESTS_DIR . 'mocks' . DS . 'core' . DS;
+                $core_paths[] = EE_TESTS_DIR . 'mocks/core/';
                 return $core_paths;
             }
         );
@@ -131,14 +142,23 @@ class CoreLoader
     }
 
 
+    /**
+     * @throws \DomainException
+     * @throws \EventEspresso\core\exceptions\InvalidDataTypeException
+     * @throws \EventEspresso\core\exceptions\InvalidInterfaceException
+     * @throws \InvalidArgumentException
+     */
     public function setupDependencyMap()
     {
         EE_Dependency_Map::register_class_loader('EE_Session_Mock');
         EE_Dependency_Map::register_dependencies(
             'EE_Session_Mock',
             array(
-                'EventEspresso\core\services\cache\TransientCacheStorage' => EE_Dependency_Map::load_from_cache,
-                'EE_Encryption'                                           => EE_Dependency_Map::load_from_cache,
+                'EventEspresso\core\services\cache\TransientCacheStorage'  => EE_Dependency_Map::load_from_cache,
+                'EventEspresso\core\domain\values\session\SessionLifespan' => EE_Dependency_Map::load_from_cache,
+                'EventEspresso\core\services\request\Request'              => EE_Dependency_Map::load_from_cache,
+                'EventEspresso\core\services\session\SessionStartHandler'  => EE_Dependency_Map::load_from_cache,
+                'EE_Encryption'                                            => EE_Dependency_Map::load_from_cache,
             )
         );
         EE_Dependency_Map::register_dependencies(
@@ -157,15 +177,18 @@ class CoreLoader
             ),
             true
         );
-        EE_Dependency_Map::instance()->add_alias(
-            'EventEspresso\core\domain\services\session\SessionIdentifierInterface',
-            'EE_Session_Mock'
-        );
     }
 
 
     public function postLoadWPandEE()
     {
+        // ensure date and time formats are set
+        if (! get_option('date_format')) {
+            update_option('date_format', 'F j, Y');
+        }
+        if (! get_option('time_format')) {
+            update_option('time_format', 'g:i a');
+        }
         EE_Registry::instance()->SSN = EE_Registry::instance()->load_core('EE_Session_Mock');
     }
 
@@ -204,7 +227,7 @@ class CoreLoader
     public function registerPsr4Path(array $maps)
     {
         foreach ($maps as $prefix => $base_dir) {
-            EE_Psr4AutoloaderInit::psr4_loader()->addNameSpace(
+            EE_Psr4AutoloaderInit::psr4_loader()->addNamespace(
                 $prefix,
                 $base_dir
             );

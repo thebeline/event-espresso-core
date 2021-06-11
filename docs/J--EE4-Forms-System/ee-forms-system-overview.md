@@ -103,14 +103,14 @@ Event Espresso comes with many different built-in input types, like `EE_Email_In
 `EE_CVV_Input` | text input | string | integer | Also when the "sensitive data" is removed, clears out the value
 `EE_Checkbox_Multi_Input` | checkbox | array of strings or array of integers | values in list of options provided | Options provided can be either strings or integers which affects the normalization and validation
 `EE_Country_Select_Input` | text input | string | valid credit card | Automatically generates the list of options from entries in wp_esp_country database table
-`EE_Currency_Input` | select (dropdown) | string | valid currency code | automatically generates options from entires in wp_esp_currency table
+`EE_Currency_Input` | select (dropdown) | string | valid currency code | automatically generates options from entries in wp_esp_currency table
 `EE_Email_Input` | email input | string | valid email address | 
 `EE_Fixed_Hidden_Input` | hidden input | string | N/A | User input is ignored
 `EE_Month_Input` | select (dropdown) | string (January = "01", February = "02", etc) or integer (January = 1, February = 2, etc) | valid month number | constructor takes $leading_zero a boolean indicating whether values should be like "01" or 1
 `EE_Radio_Button_Input` | radio | string or integer | in list of options provided | options can be strings or integers which affects normalization and validation
 `EE_Select_Input` | select (dropdown) | string or integer | in list of options provided | options can be array of strings or integers
 `EE_Select_Reveal_Input` (EE4.8.41+) | select (dropdown) | string or integer | in list of options provided | same as `EE_Select_Input`, except related form sections are hidden or revealed by the selection. Eg if this input has 2 options "credit_card" and "echeck", and the input has sibling form sections BY THOSE SAME NAMES, then when "credit_card" is selected, the sibling "credit_card" form section will be revealed, and the "echeck" section will be hidden. That is, the values should be Relative Form Paths (see "Relative Form Paths" below), but are FROM THE INPUT's PARENT; in other words, they're form paths relative to this `EE_Select_Reveal_Input`, but automatically have `../` prepended onto them.
-`EE_State_Select_Input` | select (dropdown) | integer (state ID) | in list of options | Options taken from the wp_esp_state database table
+`EE_State_Select_Input` | select (dropdown) | integer (state ID) or string (state abbreviation or state name) | in list of options | Options can be an array a flat of array of strings like regular `EE_Select_Input`s, or an array of `EE_State`s, or null (which indicates to use all active states). For the latter two cases, you can use the input setting "value_field_name" to specify the name of the `EE_State` field to use for the HTML option tag's "value" attribute.  
 `EE_Submit_Input` | submit | string | none |
 `EE_Text_Area_Input` | textarea | string | none |
 `EE_Text_Input` | text | string | none |
@@ -189,6 +189,7 @@ Representing a piece of data we want to retrieve from the user in the form, and 
 
 | Option | Description |
 | ------ | ----------- |
+default | normalized default/initial value (eg, if providing the default for a Yes_No_Input, you should provide TRUE or FALSE, not '1' or '0')
 html_name | the value of the "name" attribute on the HTML input tag. Best left as the default
 html_label_id | The value of the "id" attribute on the label tag
 html_label_class | The value of the "class" attribute on the label tag
@@ -205,6 +206,7 @@ normalization_strategy | 	Sets the normalization strategy on this input, a child
 sensitive_date_removal_strategy | Sets the sensitive data removal strategy, child of EE_Sensitive_Data_Removal_Strategy. This affects how the data stored on the input is stored when you can clean_sensitive_data() on the input or the form
 required_validation_error_message | The text to display near the input if it's required and NOT provided (in both the client-side and server-side validation)
 validation_error_message | If the input is provided, but somehow fails validation, this is the message that will appear near the input
+ignore_input | boolean. Set to `true` to have the input totally ignore whatever value the user submits server-side. This may be helpful for form inputs when they are to only be used in client-side  Javascript like React, but should be totally ignored server-side
 
 > **Note:** some of the form inputs' first option is actually an array of options (eg EE_Checkbox_Input and EE_Radio_Button_Input), and the 2nd argument is the array of options.
 
@@ -297,6 +299,7 @@ Each input has a single normalization strategy which dictates what PHP datatype 
 `EE_Many_Values_Normalization` | Makes sure the result is an array. Its constructor takes an argument to indicate which other normalization strategy should be used on each of the array's elements
 `EE_Slug_Normalization` | Makes sure the input is a string which can be a valid URL slug
 `EE_Text_Normalization` | Just makes sure the input is a string (as opposed to an array)
+`EE_Null_Normalization` | Ignores user input by replacing whatever value was received to just be `null`. Used when you don't want the input to be used server-side at all.
 
 ### Validation Strategies
 
