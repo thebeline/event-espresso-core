@@ -68,20 +68,23 @@ class EE_Venue_Shortcodes extends EE_Shortcodes
                 'This is a special dynamic shortcode. After the "*", add the exact name for your custom field, if there is a value set for that custom field within the venue then it will be output in place of this shortcode.',
                 'event_espresso'
             ),
-            '[GOOGLE_MAP_URL]'          => esc_html__(
-                'URL for the google map associated with the venue (optionally add custom width and height).',
+            '[GOOGLE_MAP_URL]'          => esc_html__('URL for the google map associated with the venue.', 'event_espresso'),
+            '[GOOGLE_MAP_URL_*]'        => esc_html__(
+                'URL for the google map associated with the venue with optional custom width and height.',
                 'event_espresso'
                 ).
                 '<p><ul>' .
                 '<li><strong>h</strong>:' . __('Height of the Image in px.', 'event_espresso') . '</li>' .
                 '<li><strong>w</strong>:' . __('Width of the Image in px.', 'event_espresso' ) . '</li>' .
                 '</ul></p>',
-            '[GOOGLE_MAP_LINK]'         => esc_html__('Link to a google map for the venue (optionally add custom width and height).', 'event_espresso').
+            '[GOOGLE_MAP_LINK]'         => esc_html__('Link to a google map for the venue.', 'event_espresso'),
+            '[GOOGLE_MAP_LINK_*]'       => esc_html__('Link to a google map for the venue with optional custom width and height.', 'event_espresso').
                 '<p><ul>' .
                 '<li><strong>h</strong>:' . __('Height of the Image in px.', 'event_espresso') . '</li>' .
                 '<li><strong>w</strong>:' . __('Width of the Image in px.', 'event_espresso' ) . '</li>' .
                 '</ul></p>',
-            '[GOOGLE_MAP_IMAGE]'        => esc_html__('Google map for venue wrapped in image tags  (optionally add custom width and height).', 'event_espresso').
+            '[GOOGLE_MAP_IMAGE]'        => esc_html__('Google map for venue wrapped in image tags.', 'event_espresso'),
+            '[GOOGLE_MAP_IMAGE_*]'      => esc_html__('Google map for venue wrapped in image tags with optional custom width and height.', 'event_espresso').
                 '<p><ul>' .
                 '<li><strong>h</strong>:' . __('Height of the Image in px.', 'event_espresso') . '</li>' .
                 '<li><strong>w</strong>:' . __('Width of the Image in px.', 'event_espresso' ) . '</li>' .
@@ -161,7 +164,7 @@ class EE_Venue_Shortcodes extends EE_Shortcodes
 
         }
         
-        if ( preg_match('/^\[GOOGLE_MAP_(LINK|IMAGE|URL)(_)?/', $shortcode, $matches) ) {
+        if ( preg_match('/^\[GOOGLE_MAP_(LINK|IMAGE|URL)(_\*)?/', $shortcode, $matches) ) {
             $field = 'gmap_';
             if ($matches[1] == 'URL') {
                 $field .= 'url';
